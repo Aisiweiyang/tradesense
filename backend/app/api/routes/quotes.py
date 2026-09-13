@@ -41,12 +41,33 @@ def create_quote(body: QuoteCreateIn, scope: OrgScope = Depends(get_scope),
                             detail={"code": "not_found", "message": "产品不存在"})
 
     rules = load_rules(db, scope.org_id)
+    base_override = None
+    base_source = ""
+    if body.supplier_product_id:
+        from ...models import SupplierProduct, Supplier
+        sp = db.scalar(select(SupplierProduct).where(
+            SupplierProduct.org_id == scope.org_id, SupplierProduct.id == body.supplier_product_id))
+        if sp is None or sp.product_id != p.id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND,
+                                detail={"code": "not_found", "message": "供应商报价不存在或不属于该产品"})
+        sup = db.get(Supplier, sp.supplier_id)
+        base_override = float(sp.cost_price)
+        base_source = f"供应商比价：{sup.name if sup else ''} 报价 {sp.cost_price:g} {sp.currency}"
+        if sp.currency != body.currency:
+            out_hint = (f"供应商报价币种 {sp.currency} 与报价币种 {body.currency} 不同，"
+                        "请在汇率中填入折算汇率")
+            # surfaced via assumptions below
     out = compute_quote(QuoteInput(
         product=p, quantity=body.quantity, incoterm=body.incoterm, currency=body.currency,
         margin_rate=body.margin_rate, destination_iso=body.destination_iso,
         printing=body.printing, mold_lump=body.mold_lump,
         packaging_unit=body.packaging_unit, exchange_rate=body.exchange_rate,
-        valid_days=body.valid_days), rules)
+        valid_days=body.valid_days,
+        base_cost_override=base_override, base_cost_source=base_source), rules)
+    if body.supplier_product_id and sp.currency != body.currency:
+        out.assumptions = list(out.assumptions) + [
+            f"供应商报价币种 {sp.currency} 与报价币种 {body.currency} 不同；"
+            "如需折算请填写汇率（当前按 1:1 计）"]
 
     # target-price risk from requirement state
     values = RequirementService(db, scope.org_id).active_values(inq.id)

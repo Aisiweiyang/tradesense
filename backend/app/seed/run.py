@@ -17,8 +17,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import (Contact, ConversationThread, Customer, FollowUpTask, Inquiry,
-                      Organization, Product, Quote, ReplyDraft, Role, Supplier, User,
-                      ConnectorAccount, SyncLog, SyncCursor)
+                      Organization, Product, Quote, ReplyDraft, Role, Supplier,
+                      SupplierProduct, User, ConnectorAccount, SyncLog, SyncCursor)
 from ..security import hash_password
 from ..services.audit import audit
 from ..services.imports import _parse_tiers
@@ -319,6 +319,29 @@ def seed_demo(db: Session) -> None:
                    detail_json=json.dumps({"first_ingested": not res1.get("duplicate"),
                                            "second_duplicate": bool(res2.get("duplicate")),
                                            "reason": res2.get("reason", "")}, ensure_ascii=False)))
+    db.flush()
+
+    # ------------------------------------- 比价数据（第五阶段：8 个产品第二供应商）
+    second_suppliers = [
+        ("TS-VB-001", 0, "永康市金泰五金制品厂", 4.15, 28),
+        ("TS-VB-002", 1, "武义县康源杯业有限公司", 6.05, 26),
+        ("TS-TM-001", 0, "永康市金泰五金制品厂", 4.55, 22),
+        ("TS-MG-001", 6, "潮州市枫溪区华光瓷厂", 0.92, 24),
+        ("TS-GC-001", 10, "临汾玻晶器皿有限公司", 3.95, 20),
+        ("TS-FC-002", 4, "祁东县玻璃制品厂", 3.15, 22),
+        ("TS-WB-001", 3, "宁波迅腾塑业科技有限公司", 0.98, 16),
+        ("TS-GS-001", 8, "泉州礼盒包装制品有限公司", 9.25, 28),
+    ]
+    for sku, sup_idx, sup_name, cost, lead in second_suppliers:
+        prod = db.scalar(select(Product).where(Product.org_id == org.id,
+                                               Product.sku == sku))
+        sup = db.scalar(select(Supplier).where(Supplier.org_id == org.id,
+                                               Supplier.name == sup_name))
+        if prod and sup:
+            db.add(SupplierProduct(org_id=org.id, product_id=prod.id,
+                                   supplier_id=sup.id, cost_price=cost,
+                                   currency="CNY", moq=prod.moq,
+                                   lead_time_days=lead))
     db.flush()
 
     # ------------------------------------------------- 货件与单证（第四阶段演示）

@@ -154,3 +154,84 @@ def bulk_active(body: BulkIds, scope: OrgScope = Depends(get_scope),
           {"count": len(rows), "is_active": body.is_active})
     db.commit()
     return {"updated": len(rows)}
+
+
+# ------------------------------------------------------------------ supplier quotes
+from fastapi import Request  # noqa: E402
+from ...models import SupplierProduct  # noqa: E402
+from ...services.compare import compare_suppliers, recommend_reason  # noqa: E402
+
+
+@router.get("/{product_id}/supplier-quotes")
+def supplier_quotes(product_id: int, scope: OrgScope = Depends(get_scope),
+                    db: Session = Depends(get_db)):
+    product = db.scalar(select(Product).where(Product.org_id == scope.org_id,
+                                              Product.id == product_id))
+    if product is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            detail={"code": "not_found", "message": "产品不存在"})
+    rows = compare_suppliers(db, scope.org_id, product)
+    items = [{
+        "id": q.supplier_product.id,
+        "supplier_id": q.supplier_product.supplier_id,
+        "supplier_name": q.supplier.name if q.supplier else "",
+        "cost_price": q.supplier_product.cost_price,
+        "currency": q.supplier_product.currency,
+        "moq": q.supplier_product.moq,
+        "lead_time_days": q.supplier_product.lead_time_days,
+        "total": q.total,
+        "scores": q.scores,
+    } for q in rows]
+    return {"items": items, "recommend_reason": recommend_reason(rows)}
+
+
+from ...schemas import ORMModel as _ORM  # noqa: E402
+
+
+class SupplierQuoteIn(_ORM):
+    supplier_id: int
+    cost_price: float
+    currency: str = "CNY"
+    moq: int = 0
+    lead_time_days: int = 0
+    supplier_sku: str = ""
+
+
+@router.post("/{product_id}/supplier-quotes", status_code=201)
+def add_supplier_quote(product_id: int, body: SupplierQuoteIn,
+                       scope: OrgScope = Depends(get_scope), db: Session = Depends(get_db)):
+    product = db.scalar(select(Product).where(Product.org_id == scope.org_id,
+                                              Product.id == product_id))
+    if product is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            detail={"code": "not_found", "message": "产品不存在"})
+    sup = db.scalar(select(Supplier).where(Supplier.org_id == scope.org_id,
+                                           Supplier.id == body.supplier_id))
+    if sup is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            detail={"code": "not_found", "message": "供应商不存在"})
+    row = SupplierProduct(org_id=scope.org_id, product_id=product.id,
+                          supplier_id=sup.id, supplier_sku=body.supplier_sku,
+                          cost_price=body.cost_price, currency=body.currency,
+                          moq=body.moq, lead_time_days=body.lead_time_days)
+    db.add(row)
+    audit(db, scope.org_id, scope.user.id, "product.supplier_quote.add", "product", product.id,
+          {"supplier": sup.name, "cost": body.cost_price})
+    db.commit()
+    return {"id": row.id}
+
+
+@router.delete("/{product_id}/supplier-quotes/{row_id}")
+def delete_supplier_quote(product_id: int, row_id: int,
+                          scope: OrgScope = Depends(get_scope), db: Session = Depends(get_db)):
+    row = db.scalar(select(SupplierProduct).where(
+        SupplierProduct.org_id == scope.org_id,
+        SupplierProduct.id == row_id, SupplierProduct.product_id == product_id))
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            detail={"code": "not_found", "message": "比价记录不存在"})
+    db.delete(row)
+    audit(db, scope.org_id, scope.user.id, "product.supplier_quote.delete", "product", product_id,
+          {"row": row_id})
+    db.commit()
+    return {"ok": True}

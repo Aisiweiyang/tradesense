@@ -408,6 +408,7 @@ function Match({ iid }: { iid: number }) {
                       ) : (
                         <Badge value="active" text="推荐" />
                       )}
+                      <SupplierCompare productId={m.product.id} />
                     </div>
                     <div className="mt-0.5 text-xs text-slate-400">{m.product.name_zh} · {m.product.material} · {m.product.spec} · 认证 {m.product.certifications.join(", ") || "无"}</div>
                     {m.exclude_reason && (
@@ -739,5 +740,54 @@ function FollowupsTab({ iid }: { iid: number }) {
         </button>
       </Card>
     </div>
+  );
+}
+
+
+// ------------------------------------------------------------- 供应商比价
+interface SupplierQuote {
+  id: number; supplier_id: number; supplier_name: string; cost_price: number;
+  currency: string; moq: number; lead_time_days: number; total: number;
+  scores: Record<string, { score: number; raw: number; detail: string }>;
+}
+
+function SupplierCompare({ productId }: { productId: number }) {
+  const [open, setOpen] = useState(false);
+  const quotes = useQuery({
+    queryKey: ["supplier-quotes", productId],
+    queryFn: () => get<{ items: SupplierQuote[]; recommend_reason: string }>(
+      `/products/${productId}/supplier-quotes`),
+    enabled: open,
+  });
+  return (
+    <span className="inline-block">
+      <button className="text-xs text-brand-500 hover:underline" onClick={() => setOpen(!open)}>
+        {open ? "收起比价" : "供应商比价"}
+      </button>
+      {open && (
+        <div className="mt-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+          {quotes.isLoading ? <span className="text-xs text-slate-400">加载中…</span> :
+           !quotes.data?.items.length ? <span className="text-xs text-slate-400">暂无供应商比价记录</span> : (
+            <>
+              <div className="mb-1 text-[11px] text-emerald-600">💡 {quotes.data.recommend_reason}</div>
+              <table className="w-full text-[11px]">
+                <thead><tr className="text-slate-400"><th className="text-left">供应商</th><th>成本</th><th>交期</th><th>可靠性</th><th>综合</th></tr></thead>
+                <tbody>
+                  {quotes.data.items.map((q, idx) => (
+                    <tr key={q.id} className="border-t border-slate-100">
+                      <td className="py-0.5 text-slate-600">{q.supplier_name}{idx === 0 && <span className="ml-1 text-emerald-500">←推荐</span>}</td>
+                      <td className="text-center font-mono">{q.cost_price}</td>
+                      <td className="text-center">{q.lead_time_days}天</td>
+                      <td className="text-center">{q.scores.reliability?.score ?? "—"}</td>
+                      <td className="text-center font-bold text-brand-600">{q.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </div>
+      )}
+    </span>
   );
 }

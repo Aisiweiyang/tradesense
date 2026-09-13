@@ -68,6 +68,8 @@ class QuoteInput:
     target_price: float | None = None
     exchange_rate: float = 1.0                # cost currency -> quote currency
     valid_days: int = 30
+    base_cost_override: float | None = None   # 供应商比价成本（覆盖阶梯价）
+    base_cost_source: str = ""                # 覆盖来源说明（写入 breakdown）
 
 
 @dataclass
@@ -106,14 +108,20 @@ def compute_quote(inp: QuoteInput, rules: dict | None = None) -> QuoteOutput:
     qty = max(int(inp.quantity or 0), 1)
     out.valid_until = datetime.now(timezone.utc) + timedelta(days=inp.valid_days)
 
-    # ---- 1. product base cost from ladder tier -----------------------------
-    base_cost = tier_price(p, qty)
-    if base_cost is None:
-        out.missing.append("产品缺少阶梯价格，无法计算基础成本")
-        base_cost = 0.0
-    breakdown = [{"item": "产品成本 (阶梯价)", "per_unit": round(base_cost, 4),
-                  "amount": round(base_cost * qty, 2),
-                  "source": f"SKU {p.sku} 阶梯价格表 qty≥{qty}"}]
+    # ---- 1. product base cost: supplier quote override > ladder tier -------
+    if inp.base_cost_override is not None:
+        base_cost = float(inp.base_cost_override)
+        breakdown = [{"item": "产品成本 (供应商报价)", "per_unit": round(base_cost, 4),
+                      "amount": round(base_cost * qty, 2),
+                      "source": inp.base_cost_source or "供应商比价选定报价"}]
+    else:
+        base_cost = tier_price(p, qty)
+        if base_cost is None:
+            out.missing.append("产品缺少阶梯价格，无法计算基础成本")
+            base_cost = 0.0
+        breakdown = [{"item": "产品成本 (阶梯价)", "per_unit": round(base_cost, 4),
+                      "amount": round(base_cost * qty, 2),
+                      "source": f"SKU {p.sku} 阶梯价格表 qty≥{qty}"}]
 
     # ---- 2. packaging -------------------------------------------------------
     packaging = inp.packaging_unit if inp.packaging_unit is not None else float(rules["packaging_unit"])

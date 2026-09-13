@@ -288,6 +288,7 @@ class QuoteCreateIn(BaseModel):
     exchange_rate: float = Field(default=1.0, gt=0)
     customer_price: Optional[float] = None
     valid_days: int = Field(default=30, ge=1, le=180)
+    supplier_product_id: Optional[int] = None
 
 
 class QuoteOut(ORMModel):
