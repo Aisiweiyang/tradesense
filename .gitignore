@@ -26,3 +26,6 @@ frontend/dist/
 # Misc
 .DS_Store
 .playwright/
+test-results/
+playwright-report/
+
