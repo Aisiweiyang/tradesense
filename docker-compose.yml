@@ -1,0 +1,44 @@
+# TradeSense — full stack via Docker Compose.
+# SQLite by default; uncomment the postgres service + DATABASE_URL for production.
+services:
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: sqlite:////data/tradesense.db
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-in-production}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-1}
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # IMAP_PASSWORD / WHATSAPP_TOKEN / ... pass through as needed
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_data:/data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+
+  # ---- Optional: PostgreSQL for production mode ----
+  # db:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_DB: tradesense
+  #     POSTGRES_USER: tradesense
+  #     POSTGRES_PASSWORD: secret
+  #   volumes:
+  #     - pg_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  # Then set backend env: DATABASE_URL=postgresql+psycopg://tradesense:secret@db:5432/tradesense
+
+volumes:
+  backend_data:
+  # pg_data:

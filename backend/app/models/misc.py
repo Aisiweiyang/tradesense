@@ -1,0 +1,31 @@
+"""Knowledge documents and audit events."""
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .base import Base, OrgMixin, TZDateTime, TimestampMixin
+
+
+class KnowledgeDocument(Base, OrgMixin, TimestampMixin):
+    __tablename__ = "knowledge_documents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    content: Mapped[str] = mapped_column(Text, default="")
+    tags: Mapped[str] = mapped_column(String(300), default="")
+
+
+class AuditEvent(Base, OrgMixin, TimestampMixin):
+    __tablename__ = "audit_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    action: Mapped[str] = mapped_column(String(100), index=True)  # login / quote.approve / reply.approve ...
+    entity_type: Mapped[str] = mapped_column(String(50), default="")
+    entity_id: Mapped[str] = mapped_column(String(50), default="")
+    detail_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=datetime.utcnow)
