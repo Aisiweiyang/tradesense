@@ -5,7 +5,7 @@ from .customer import Contact, Customer
 from .inquiry import ConversationMessage, ConversationThread, Inquiry
 from .requirement import ClarificationLog, RequirementHistory, RequirementSlot, RequirementState
 from .product import Certification, Product, ProductVariant, Supplier, SupplierProduct
-from .quote import PriceRule, Quote, QuoteItem
+from .quote import PriceRule, Quote, QuoteItem, QuoteSheet
 from .matching import MatchResult
 from .followup import FollowUpTask
 from .reply import ReplyDraft
@@ -22,7 +22,7 @@ __all__ = [
     "Inquiry", "ConversationThread", "ConversationMessage",
     "RequirementState", "RequirementSlot", "RequirementHistory", "ClarificationLog",
     "Product", "ProductVariant", "Supplier", "SupplierProduct", "Certification",
-    "Quote", "QuoteItem", "PriceRule",
+    "Quote", "QuoteItem", "QuoteSheet", "PriceRule",
     "MatchResult",
     "FollowUpTask",
     "ReplyDraft",

@@ -69,3 +69,29 @@ class PriceRule(Base, OrgMixin, TimestampMixin):
     rule_type: Mapped[str] = mapped_column(String(50))  # margin / freight_zone / insurance / duty / packaging / printing / mold
     config_json: Mapped[str] = mapped_column(Text, default="{}")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+SHEET_STATUSES = ["draft", "pending_approval", "approved", "rejected", "superseded"]
+
+
+class QuoteSheet(Base, OrgMixin, TimestampMixin):
+    """Merged quotation for one inquiry: multiple quote lines, human approved."""
+    __tablename__ = "quote_sheets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    inquiry_id: Mapped[int] = mapped_column(ForeignKey("inquiries.id"), index=True)
+    sheet_no: Mapped[str] = mapped_column(String(40), default="")
+    version: Mapped[int] = mapped_column(default=1)
+    status: Mapped[str] = mapped_column(String(30), default="draft", index=True)
+    currency: Mapped[str] = mapped_column(String(10), default="USD")
+    incoterm: Mapped[str] = mapped_column(String(10), default="FOB")
+    lines_json: Mapped[str] = mapped_column(Text, default="[]")
+    # line: {quote_id, product_id, sku, name_en, qty, unit_price, subtotal}
+    subtotal: Mapped[float] = mapped_column(default=0.0)
+    margin_rate: Mapped[float] = mapped_column(default=0.0)
+    target_price_json: Mapped[str] = mapped_column(Text, default="{}")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    is_formal: Mapped[bool] = mapped_column(Boolean, default=False)
+    approved_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    approved_at: Mapped[Optional[datetime]] = mapped_column(TZDateTime, nullable=True)
+    created_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)

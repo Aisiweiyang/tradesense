@@ -1,7 +1,7 @@
 """API router aggregation."""
 from fastapi import APIRouter
 
-from .routes import auth, connectors, customers, dashboard, followups, imports, inquiries, products, quotes, replies, shipments
+from .routes import auth, connectors, customers, dashboard, followups, imports, inquiries, products, quotes, quote_sheets, replies, shipments
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(auth.router)
@@ -10,6 +10,7 @@ api_router.include_router(inquiries.router)
 api_router.include_router(products.router)
 api_router.include_router(imports.router)
 api_router.include_router(quotes.router)
+api_router.include_router(quote_sheets.router)
 api_router.include_router(replies.router)
 api_router.include_router(followups.router)
 api_router.include_router(followups.suppliers_router)

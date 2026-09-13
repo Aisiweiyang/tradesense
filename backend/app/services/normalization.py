@@ -420,13 +420,28 @@ def parse_quantity(text: str) -> dict | None:
     return {"value": int(val), "unit": unit, "raw": mm.group(0).strip()}
 
 
+PRICE_TRIGGER_KEYWORDS = ["price", "budget", "cost", "$", "usd", "eur", "€", "£",
+                          "target", "目标价", "价格", "预算", "单价"]
+
+
 def parse_target_price(text: str) -> dict | None:
-    """Extract target/budget price: currency + value (+per unit)."""
+    """Extract target/budget price: currency + value (+per unit).
+
+    A quantity usually appears BEFORE the price wording in real inquiries
+    ("need 1,000 pcs ... target price USD 6/pc"), so we first search after the
+    last price keyword; only fall back to the whole text if that yields nothing.
+    """
     lower = text.lower()
-    if not any(k in lower for k in ["price", "budget", "cost", "$", "usd", "eur", "€", "£",
-                                     "目标价", "价格", "预算", "单价"]):
+    if not any(k in lower for k in PRICE_TRIGGER_KEYWORDS):
         return None
-    m = _PRICE_RE.search(text)
+    m = None
+    keyword_positions = [lower.rfind(k.lower()) for k in PRICE_TRIGGER_KEYWORDS
+                         if k.lower() in lower]
+    if keyword_positions:
+        start = min(max(keyword_positions), max(0, len(text) - 1))
+        m = _PRICE_RE.search(text, start)
+    if m is None:
+        m = _PRICE_RE.search(text)
     if not m:
         return None
     cur_raw = (m.group(1) or m.group(4) or "USD").lower()
