@@ -147,7 +147,7 @@ def resolve_issue(db: Session, org_id: int, issue: ShipmentIssue, action: str,
     issue.handler_user_id = actor_user_id
     if issue.status in ("adopted", "manual_fixed"):
         issue.resolved_at = now
-        # conflict resolved → re-run rules so paired issues disappear
-        refresh_issues(db, org_id, issue.shipment, actor_user_id)
+        # NOTE: no immediate refresh here — the adopted record must survive as
+        # audit trail; stale open issues are cleaned on the next recheck.
     db.flush()
     return issue

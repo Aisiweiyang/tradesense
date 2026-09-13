@@ -92,7 +92,31 @@ class ImportPreview:
                           "valid": r.valid} for r in self.rows]}
 
 
-_PREVIEW_CACHE: dict[str, ImportPreview] = {}
+def _save_preview(db: Session, org_id: int, preview: "ImportPreview") -> None:
+    """Persist preview payload for commit (DB-backed, survives restarts)."""
+    from ..models import ImportPreview as ImportPreviewRow, purge_expired
+
+    purge_expired(db)
+    db.add(ImportPreviewRow(
+        org_id=org_id, token=preview.token,
+        payload_json=json.dumps(preview.summary(), ensure_ascii=False, default=str)))
+    db.flush()
+
+
+def _load_preview(db: Session, org_id: int, token: str) -> "ImportPreview | None":
+    from ..models import ImportPreview as ImportPreviewRow
+
+    row = db.scalar(select(ImportPreviewRow).where(
+        ImportPreviewRow.org_id == org_id, ImportPreviewRow.token == token))
+    if row is None:
+        return None
+    payload = json.loads(row.payload_json)
+    rows = [ImportRow(**{k: v for k, v in r.items() if k in ImportRow.__dataclass_fields__})
+            for r in payload["rows"]]
+    return ImportPreview(token=payload["token"], file_name=payload["file_name"],
+                         mapping=payload["mapping"], columns=payload["columns"],
+                         rows=rows, total=payload["total"], valid_count=payload["valid"],
+                         error_count=payload["errors"], duplicate_count=payload["duplicates"])
 
 
 def parse_table(file_bytes: bytes, file_name: str) -> tuple[list[str], list[list[str]]]:
@@ -141,6 +165,12 @@ def auto_map(headers: list[str]) -> dict:
 
 def build_preview(db: Session, org_id: int, file_bytes: bytes, file_name: str,
                   mapping: dict | None = None) -> ImportPreview:
+    return _build_preview(db, org_id, file_bytes, file_name, mapping,
+                          persist=True)
+
+
+def _build_preview(db: Session, org_id: int, file_bytes: bytes, file_name: str,
+                   mapping: dict | None, persist: bool) -> ImportPreview:
     headers, raw_rows = parse_table(file_bytes, file_name)
     mapping = mapping if mapping is not None else auto_map(headers)
 
@@ -219,11 +249,8 @@ def build_preview(db: Session, org_id: int, file_bytes: bytes, file_name: str,
         error_count=sum(1 for r in preview_rows if r.errors),
         duplicate_count=sum(1 for r in preview_rows if r.duplicate_of),
     )
-    _PREVIEW_CACHE[preview.token] = preview
-    # keep cache bounded
-    if len(_PREVIEW_CACHE) > 50:
-        for k in list(_PREVIEW_CACHE)[: -50]:
-            _PREVIEW_CACHE.pop(k, None)
+    if persist:
+        _save_preview(db, org_id, preview)
     return preview
 
 
@@ -255,7 +282,7 @@ def _parse_tiers(raw: str) -> list[dict]:
 
 def commit_preview(db: Session, org_id: int, token: str,
                    supplier_cache: dict[str, int] | None = None) -> dict:
-    preview = _PREVIEW_CACHE.get(token)
+    preview = _load_preview(db, org_id, token)
     if preview is None:
         raise ValueError("预览令牌不存在或已过期，请重新上传")
     created, updated, failed = 0, 0, []
@@ -298,7 +325,6 @@ def commit_preview(db: Session, org_id: int, token: str,
             db.add(Product(org_id=org_id, **values))
             created += 1
     db.flush()
-    _PREVIEW_CACHE.pop(token, None)
     return {"created": created, "updated": updated, "failed": failed}
 
 

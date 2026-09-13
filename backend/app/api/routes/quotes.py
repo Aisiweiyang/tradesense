@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ...database import get_db
 from ...deps import OrgScope, get_scope, order_by, paginate
+from ...rbac import require_role
 from ...models import Inquiry, Product, Quote, QuoteItem
 from ...schemas import QuoteCreateIn, QuoteOut, QuotePriceIn
 from ...services.audit import audit
@@ -178,7 +179,8 @@ def _quote_blocking(db: Session, scope: OrgScope, inquiry_id: int) -> list[str]:
 
 
 @router.post("/{quote_id}/price")
-def set_customer_price(quote_id: int, body: QuotePriceIn, scope: OrgScope = Depends(get_scope),
+def set_customer_price(quote_id: int, body: QuotePriceIn,
+                       scope: OrgScope = Depends(require_role("quote.set_price")),
                        db: Session = Depends(get_db)):
     """Salesperson sets the actually-quoted customer price (cost stays internal)."""
     q = db.scalar(select(Quote).where(Quote.org_id == scope.org_id, Quote.id == quote_id))
@@ -201,7 +203,8 @@ def set_customer_price(quote_id: int, body: QuotePriceIn, scope: OrgScope = Depe
 
 
 @router.post("/{quote_id}/approve")
-def approve_quote(quote_id: int, scope: OrgScope = Depends(get_scope), db: Session = Depends(get_db)):
+def approve_quote(quote_id: int, scope: OrgScope = Depends(require_role("quote.approve")),
+                  db: Session = Depends(get_db)):
     """Human approval is the ONLY way a quote becomes formal."""
     q = db.scalar(select(Quote).where(Quote.org_id == scope.org_id, Quote.id == quote_id))
     if q is None:

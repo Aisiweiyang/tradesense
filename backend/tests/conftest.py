@@ -94,6 +94,7 @@ def client(db, org):
             pass
 
     app.dependency_overrides[get_db] = override_get_db
+    app.state.test_db = db  # exposed for tests that need to seed directly
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

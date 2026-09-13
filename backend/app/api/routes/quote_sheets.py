@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ...database import get_db
 from ...deps import OrgScope, get_scope
+from ...rbac import require_role
 from ...models import QuoteSheet
 from ...security import decode_token
 from ...services.audit import audit
@@ -72,7 +73,7 @@ def get_sheet(sheet_id: int, scope: OrgScope = Depends(get_scope),
 
 
 @router.post("/{sheet_id}/approve")
-def approve(sheet_id: int, scope: OrgScope = Depends(get_scope),
+def approve(sheet_id: int, scope: OrgScope = Depends(require_role("quote.approve")),
             db: Session = Depends(get_db)):
     from datetime import datetime, timezone
 

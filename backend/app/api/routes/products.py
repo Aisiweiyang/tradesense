@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from ...database import get_db
 from ...deps import OrgScope, get_scope, order_by, paginate
+from ...rbac import require_role
 from ...models import Product, Supplier
 from ...schemas import BulkIds, ProductIn, ProductOut, ProductUpdate
 from ...services.audit import audit
@@ -50,7 +51,7 @@ def list_products(scope: OrgScope = Depends(get_scope), db: Session = Depends(ge
 
 
 @router.post("", status_code=201)
-def create_product(body: ProductIn, scope: OrgScope = Depends(get_scope),
+def create_product(body: ProductIn, scope: OrgScope = Depends(require_role("product.write")),
                    db: Session = Depends(get_db)):
     dup = db.scalar(select(Product).where(Product.org_id == scope.org_id,
                                           Product.sku == body.sku))
@@ -129,7 +130,8 @@ def get_product(product_id: int, scope: OrgScope = Depends(get_scope),
 
 
 @router.patch("/{product_id}")
-def update_product(product_id: int, body: ProductUpdate, scope: OrgScope = Depends(get_scope),
+def update_product(product_id: int, body: ProductUpdate,
+                   scope: OrgScope = Depends(require_role("product.write")),
                    db: Session = Depends(get_db)):
     p = db.scalar(select(Product).where(Product.org_id == scope.org_id, Product.id == product_id))
     if p is None:

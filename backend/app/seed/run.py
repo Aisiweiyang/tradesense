@@ -227,6 +227,8 @@ def seed_demo(db: Session) -> None:
     user = User(org_id=org.id, email=DEMO_EMAIL, name="张外贸（演示管理员）",
                 password_hash=hash_password(DEMO_PASSWORD), role="owner")
     db.add(user)
+    db.add(User(org_id=org.id, email="member@tradesense-demo.cn", name="李业务（演示成员）",
+                password_hash=hash_password(DEMO_PASSWORD), role="member"))
     db.flush()
 
     # ------------------------------------------------------------- suppliers

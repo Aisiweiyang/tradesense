@@ -3,6 +3,17 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          recharts: ["recharts"],
+          router: ["react-router-dom"],
+          query: ["@tanstack/react-query"],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
@@ -25,5 +36,6 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: "./src/test-setup.ts",
+    exclude: ["e2e/**", "node_modules/**"],
   } as never,
 });

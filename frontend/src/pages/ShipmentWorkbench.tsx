@@ -226,7 +226,7 @@ function IssuesTab({ detail, onChanged }: { detail: Detail; onChanged: () => voi
   const handled = detail.issues.filter((i) => i.status !== "open");
 
   const IssueCard = ({ i }: { i: Issue }) => (
-    <div className={`rounded-lg border p-3 ${i.severity === "high" ? "border-red-200 bg-red-50/40" : i.severity === "medium" ? "border-amber-200 bg-amber-50/40" : "border-slate-200 bg-slate-50"}`}>
+    <div data-issue-id={i.id} className={`rounded-lg border p-3 ${i.severity === "high" ? "border-red-200 bg-red-50/40" : i.severity === "medium" ? "border-amber-200 bg-amber-50/40" : "border-slate-200 bg-slate-50"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ function IssuesTab({ detail, onChanged }: { detail: Detail; onChanged: () => voi
       </div>
       {i.status === "open" && (
         <div className="mt-2.5 flex flex-wrap gap-1.5">
-          <button className="btn-primary px-2 py-1 text-xs" onClick={() => act.mutate({ id: i.id, action: "adopt" })}>采纳建议</button>
+          <button className="btn-primary px-2 py-1 text-xs" data-testid={`adopt-${i.id}`} onClick={() => act.mutate({ id: i.id, action: "adopt" })}>采纳建议</button>
           <button className="btn-ghost px-2 py-1 text-xs" onClick={() => act.mutate({ id: i.id, action: "manual_fixed" })}>已手动修改</button>
           {noteFor === i.id ? (
             <span className="flex items-center gap-1.5">

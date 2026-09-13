@@ -183,7 +183,11 @@ def test_adopt_updates_target_field(client, shipment):
                       and f["field_name"] == "total_amount")
     assert inv_amount["value"] == issue["expected_value"]
     detail = client.get(f"/api/shipments/{shipment['id']}", headers=h).json()
-    assert "amount_vs_lc" not in {i["rule_code"] for i in detail["issues"]}
+    open_amounts = [i for i in detail["issues"]
+                    if i["rule_code"] == "amount_vs_lc" and i["status"] == "open"]
+    assert open_amounts == []  # conflict resolved
+    adopted = [i for i in detail["issues"] if i["status"] == "adopted"]
+    assert adopted and adopted[0]["resolution_note"]  # audit trail kept
 
 
 def test_adopt_without_target_422(client, shipment):
