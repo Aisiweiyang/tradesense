@@ -12,6 +12,7 @@ interface Me {
 const NAV = [
   ["/", "nav_dashboard", "🏢"],
   ["/today", "nav_today", "✅"],
+  ["/shipments", "单证工作台", "🚢"],
   ["/inquiries", "nav_inquiries", "📩"],
   ["/customers", "nav_customers", "🤝"],
   ["/products", "nav_products", "📦"],

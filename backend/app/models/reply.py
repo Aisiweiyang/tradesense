@@ -28,7 +28,10 @@ class ReplyDraft(Base, OrgMixin, TimestampMixin):
     __tablename__ = "reply_drafts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    inquiry_id: Mapped[int] = mapped_column(ForeignKey("inquiries.id"), index=True)
+    inquiry_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("inquiries.id"), nullable=True, index=True)  # nullable: 货件催补等非询盘草稿
+    shipment_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("shipments.id"), nullable=True, index=True)
     kind: Mapped[str] = mapped_column(String(40), default="first_reply")
     tone: Mapped[str] = mapped_column(String(20), default="friendly")  # formal/friendly/concise
     subject_en: Mapped[str] = mapped_column(String(300), default="")

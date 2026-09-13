@@ -321,6 +321,10 @@ def seed_demo(db: Session) -> None:
                                            "reason": res2.get("reason", "")}, ensure_ascii=False)))
     db.flush()
 
+    # ------------------------------------------------- 货件与单证（第四阶段演示）
+    from .shipments_seed import seed_shipments
+    seed_shipments(db, org.id, user.id)
+
     audit(db, org.id, user.id, "demo.seed", "organization", org.id, {"products": len(PRODUCTS)})
 
 

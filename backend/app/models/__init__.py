@@ -11,6 +11,9 @@ from .followup import FollowUpTask
 from .reply import ReplyDraft
 from .connector import ConnectorAccount, ExternalMessage, SyncCursor, SyncLog
 from .misc import AuditEvent, KnowledgeDocument
+from .shipment import (Shipment, Document, DocumentField, ShipmentIssue,
+                        DocRuleConfig, SHIPMENT_STATUSES, DOC_TYPES, RULE_CODES,
+                        DEFAULT_REQUIRED_DOCS)
 
 __all__ = [
     "Base", "OrgMixin", "TimestampMixin", "utcnow",
@@ -25,4 +28,6 @@ __all__ = [
     "ReplyDraft",
     "ConnectorAccount", "ExternalMessage", "SyncCursor", "SyncLog",
     "KnowledgeDocument", "AuditEvent",
+    "Shipment", "Document", "DocumentField", "ShipmentIssue", "DocRuleConfig",
+    "SHIPMENT_STATUSES", "DOC_TYPES", "RULE_CODES", "DEFAULT_REQUIRED_DOCS",
 ]

@@ -15,6 +15,7 @@ import Quotes from "./pages/Quotes";
 import Followups from "./pages/Followups";
 import Connectors from "./pages/Connectors";
 import SyncLogs from "./pages/SyncLogs";
+import ShipmentWorkbench from "./pages/ShipmentWorkbench";
 import Settings from "./pages/Settings";
 import Audit from "./pages/Audit";
 import Analytics from "./pages/Analytics";
@@ -29,6 +30,8 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/today" element={<Today />} />
+        <Route path="/shipments" element={<ShipmentWorkbench />} />
+        <Route path="/shipments/:id" element={<ShipmentWorkbench />} />
         <Route path="/inquiries" element={<Inquiries />} />
         <Route path="/inquiries/new" element={<InquiryNew />} />
         <Route path="/inquiries/:id" element={<InquiryDetail />} />

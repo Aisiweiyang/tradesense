@@ -178,7 +178,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("tradesense_locale", l);
     setLocaleState(l);
   };
-  const t = (k: Key) => dicts[locale][k] ?? zh[k];
+  const t = (k: Key) => dicts[locale][k] ?? zh[k] ?? (k as string);
   return <Ctx.Provider value={{ locale, setLocale, t }}>{children}</Ctx.Provider>;
 }
 

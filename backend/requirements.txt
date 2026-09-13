@@ -10,3 +10,5 @@ python-multipart>=0.0.9
 email-validator>=2.1
 PyJWT>=2.8
 pytest>=8.2
+pdfplumber>=0.11
+reportlab>=4.0
