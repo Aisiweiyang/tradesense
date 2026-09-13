@@ -6,11 +6,19 @@ here so the rest of the code stays database-agnostic.
 from __future__ import annotations
 
 from collections.abc import Generator
+from pathlib import Path
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import settings
+
+# SQLite file DBs live under a directory (backend/data/) that must exist
+# before the engine connects; in-memory / non-sqlite URLs are untouched.
+if settings.database_url.startswith("sqlite"):
+    _sqlite_file = settings.database_url.replace("sqlite:///", "", 1)
+    if _sqlite_file and _sqlite_file != ":memory:":
+        Path(_sqlite_file).parent.mkdir(parents=True, exist_ok=True)
 
 connect_args = {}
 if settings.database_url.startswith("sqlite"):

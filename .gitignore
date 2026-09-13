@@ -5,20 +5,24 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
-# Databases & secrets
+# Databases & secrets (SQLite lives in backend/data/)
 *.db
 *.db-wal
 *.db-shm
+backend/data/
 .env
 backend/.env
 uploads/
 
+# Logs (dev servers write to logs/ or console)
+*.log
+logs/
+
 # Node
 node_modules/
 frontend/dist/
-frontend/vite.log
+*.tsbuildinfo
 
 # Misc
-backend/server.log
-screenshots/.token
 .DS_Store
+.playwright/

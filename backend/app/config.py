@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     environment: str = "local"
 
     # Database: SQLite for local one-click start, PostgreSQL for production.
-    database_url: str = "sqlite:///./tradesense.db"
+    # SQLite file lives under backend/data/ (auto-created) — code and data stay apart.
+    database_url: str = "sqlite:///./data/tradesense.db"
 
     # Auth
     secret_key: str = "dev-secret-change-me-in-production"

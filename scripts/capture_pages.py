@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 
 BASE = Path(__file__).resolve().parent.parent
-SHOTS = BASE / "screenshots"
+SHOTS = BASE / "docs" / "phase1-screenshots"
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 API = "http://127.0.0.1:8000/api"
 

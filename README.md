@@ -102,7 +102,7 @@ tradesense/
 | [docs/13-测试说明.md](docs/13-测试说明.md) | 测试矩阵与运行方式 |
 | [docs/14-已知限制.md](docs/14-已知限制.md) | 当前版本的限制与注意事项 |
 | [docs/15-后续路线图.md](docs/15-后续路线图.md) | P2 与后续方向 |
-| [OPTIMIZATION_LOG.md](OPTIMIZATION_LOG.md) | 三轮有记录的优化（问题→修复→验证） |
+| [docs/17-优化日志.md](docs/17-优化日志.md) | 三轮有记录的优化（问题→修复→验证） |
 
 ## 🔑 设计原则（与实现一致）
 

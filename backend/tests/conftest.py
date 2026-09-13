@@ -11,7 +11,7 @@ backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir))
 
 # Test settings BEFORE app modules import config
-os.environ["DATABASE_URL"] = "sqlite:///./test_tradesense.db"
+os.environ["DATABASE_URL"] = "sqlite://"  # in-memory; tests never touch a file DB
 os.environ["SEED_DEMO_DATA"] = "0"
 
 
