@@ -67,19 +67,23 @@ cd frontend && npm test                            # 11 个测试：组件+i18n+
 ## 📁 目录结构
 
 ```
-tradesense/
-├── backend/               FastAPI + SQLAlchemy 2 + Alembic (Python 3.13)
+外贸询盘助手/
+├── backend/                 FastAPI + SQLAlchemy 2 + Alembic (Python 3.13)
 │   ├── app/
-│   │   ├── models/        27 张业务表，全部按组织隔离
-│   │   ├── services/      需求状态引擎、匹配、追问、报价、草稿、连接器、AI 适配
-│   │   ├── api/routes/    REST API（统一错误/分页/权限）
-│   │   └── seed/          演示数据（42 产品 / 19 询盘 / 10 场景）
-│   ├── alembic/           数据库迁移
-│   └── tests/             pytest 测试套件
-├── frontend/              React 18 + TypeScript + Vite + Tailwind
-│   └── src/pages/         18 个页面（中文界面，可切英文）
-├── docs/                  15 篇专题文档（算法/架构/接入/限制…）
-├── scripts/               启动脚本 + 截图脚本
+│   │   ├── models/          27 张业务表，全部按组织隔离
+│   │   ├── services/        需求状态引擎、匹配、追问、报价、草稿、连接器、AI 适配
+│   │   ├── api/routes/      REST API（统一错误/分页/权限）
+│   │   └── seed/            演示数据（42 产品 / 19 询盘 / 10 场景）
+│   ├── data/                SQLite 数据文件（运行时自动创建，不入库）
+│   ├── alembic/             数据库迁移
+│   ├── scripts/             后端管理命令（init_db.py，与 Docker 镜像上下文绑定）
+│   └── tests/               pytest 测试套件
+├── frontend/                React 18 + TypeScript + Vite + Tailwind
+│   └── src/pages/           18 个页面（中文界面，可切英文）
+├── docs/                    17 篇文档（快速开始/算法/接入/限制/交付报告/优化日志）
+│   └── phase1-screenshots/  第一阶段界面验收截图
+├── scripts/                 跨端开发工具（一键启动、页面截图）
+├── logs/                    开发日志（运行时产生，不入库）
 └── docker-compose.yml
 ```
 

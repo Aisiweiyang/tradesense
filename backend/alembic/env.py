@@ -20,10 +20,12 @@ if config.config_file_name is not None:
 
 db_url = settings.database_url
 if db_url.startswith("sqlite://"):
-    # ensure absolute path so alembic works from any cwd
+    # ensure absolute path so alembic works from any cwd, and make sure the
+    # parent directory exists (fresh clone has no backend/data/ yet)
     path = db_url.replace("sqlite:///", "", 1)
-    if path and not Path(path).is_absolute():
+    if path and path != ":memory:" and not Path(path).is_absolute():
         path = str((Path.cwd() / path).resolve())
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     db_url = f"sqlite:///{path}"
 config.set_main_option("sqlalchemy.url", db_url)
 
