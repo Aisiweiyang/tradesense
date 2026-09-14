@@ -1,5 +1,7 @@
 # TradeSense
 
+**中文 | [English](README.en.md)**
+
 **AI 外贸询盘、客户跟进、产品匹配与报价辅助平台**
 
 面向刚开始做外贸的个人和小团队：产品资料散落在 Excel 里、通过邮件/WhatsApp/网站表单收询盘、英文沟通吃力、不知道该追问什么、容易漏掉报价条件和跟进时间。TradeSense 定位是业务员的**副驾驶**——帮助理解客户、整理需求、寻找产品、发现风险、撰写回复、计算报价、跟踪客户；**所有重要承诺（正式报价、对外回复）都由人工确认**，系统绝不自动发送。
@@ -62,8 +64,9 @@ docker compose up --build
 ## 🧪 测试
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest      # 79 个测试：单元+API+场景+隔离+幂等
-cd frontend && npm test                            # 11 个测试：组件+i18n+API 客户端
+cd backend && .venv/Scripts/python -m pytest      # 165 个测试：单元+API+场景+隔离+幂等+权限
+cd frontend && npm test                            # 27 个测试：组件+i18n+API 客户端+页面冒烟
+cd frontend && npx playwright test                 # 3 条浏览器 E2E 链路（需先启动前后端）
 ```
 
 ## 📁 目录结构
@@ -81,8 +84,9 @@ cd frontend && npm test                            # 11 个测试：组件+i18n+
 │   ├── scripts/             后端管理命令（init_db.py，与 Docker 镜像上下文绑定）
 │   └── tests/               pytest 测试套件
 ├── frontend/                React 18 + TypeScript + Vite + Tailwind
-│   └── src/pages/           18 个页面（中文界面，可切英文）
-├── docs/                    18 篇文档（快速开始/算法/接入/单证工作台/限制/交付报告）
+│   ├── src/pages/           19 个页面（中文界面，可切英文）
+│   └── e2e/                 Playwright 浏览器端到端测试
+├── docs/                    19 篇文档（快速开始/算法/接入/单证工作台/比价/限制/交付报告）
 │   └── phase1-screenshots/  第一阶段界面验收截图
 ├── scripts/                 跨端开发工具（一键启动、页面截图）
 ├── logs/                    开发日志（运行时产生，不入库）
