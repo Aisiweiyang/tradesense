@@ -7,10 +7,23 @@ from typing import Optional
 from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base, OrgMixin, TZDateTime, TimestampMixin
+from .base import Base, OrgMixin, TZDateTime, TimestampMixin, utcnow
 
 INQUIRY_STATUSES = ["open", "clarifying", "quoted", "won", "lost", "spam"]
 PROCESS_STATUSES = ["pending", "processed", "duplicate", "failed"]
+
+# 销售漏斗九阶段：won/lost/dormant 为终态
+FUNNEL_STAGES = ["new", "qualified", "clarifying", "quoted", "sample",
+                 "negotiating", "won", "lost", "dormant"]
+FUNNEL_STAGE_LABELS = {
+    "new": "新询盘", "qualified": "有效线索", "clarifying": "澄清中",
+    "quoted": "已报价", "sample": "寄样中", "negotiating": "谈判中",
+    "won": "已成交", "lost": "已失败", "dormant": "休眠",
+}
+# 相邻转化率的口径：线性主链上的下一站
+FUNNEL_NEXT = {"new": "qualified", "qualified": "clarifying",
+               "clarifying": "quoted", "quoted": "sample",
+               "sample": "negotiating", "negotiating": "won"}
 
 
 class Inquiry(Base, OrgMixin, TimestampMixin):
@@ -65,3 +78,16 @@ class ConversationMessage(Base, OrgMixin, TimestampMixin):
     parse_json: Mapped[str] = mapped_column(Text, default="{}")
 
     inquiry: Mapped[Inquiry] = relationship(back_populates="messages")
+
+
+class InquiryStageEvent(Base, OrgMixin, TimestampMixin):
+    """询盘阶段流转事件，销售漏斗的数据源（一次变更一条，append-only）。"""
+    __tablename__ = "inquiry_stage_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    inquiry_id: Mapped[int] = mapped_column(ForeignKey("inquiries.id"), index=True)
+    from_stage: Mapped[str] = mapped_column(String(30), default="")  # 空串=初次进入
+    to_stage: Mapped[str] = mapped_column(String(30), index=True)
+    note: Mapped[str] = mapped_column(String(300), default="")
+    actor_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow)

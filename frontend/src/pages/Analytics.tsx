@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LabelList } from "recharts";
 import { get } from "../api/client";
-import { Card, ErrorState, Loading, PageHeader } from "../components/ui";
+import { Card, EmptyState, ErrorState, Loading, PageHeader } from "../components/ui";
 
 interface Analytics {
   inquiry_total: number;
@@ -12,6 +13,16 @@ interface Analytics {
   approved_quote_amount: number;
 }
 
+interface FunnelStage {
+  stage: string;
+  label: string;
+  count: number;
+  reached: number;
+  conversion_to_next: number | null;
+  next_stage: string | null;
+  median_dwell_hours: number | null;
+}
+
 const STAGE_LABEL: Record<string, string> = {
   open: "新询盘", clarifying: "澄清中", quoted: "已报价", won: "已成交", lost: "已失败",
 };
@@ -20,6 +31,124 @@ const CHANNEL_LABEL: Record<string, string> = {
   generic_webhook: "Webhook",
 };
 const PIE_COLORS = ["#3b6fe0", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b"];
+
+// 主链按漏斗顺序展示，lost/dormant 是分支终态，放图外
+const MAIN_CHAIN = ["new", "qualified", "clarifying", "quoted", "sample", "negotiating", "won"];
+// 主链配色：蓝 → 绿渐进，成交收尾用深绿
+const CHAIN_COLORS = ["#60a5fa", "#4f9bef", "#3b8ee6", "#3b82d6", "#2f9fc9", "#10b981", "#059669"];
+
+function fmtHours(h: number | null): string {
+  if (h == null) return "—";
+  if (h < 72) return `${Math.round(h)} 小时`;
+  return `${(h / 24).toFixed(1)} 天`;
+}
+
+function fmtConv(c: number | null): string {
+  return c == null ? "—" : `${Math.round(c * 100)}%`;
+}
+
+function FunnelCard() {
+  const [selected, setSelected] = useState<string | null>(null);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["funnel"],
+    queryFn: () => get<{ stages: FunnelStage[] }>("/analytics/funnel"),
+  });
+  if (isLoading) return <Card title="销售漏斗"><Loading text="漏斗计算中…" /></Card>;
+  if (error) return <Card title="销售漏斗"><ErrorState message={(error as Error).message} onRetry={refetch} /></Card>;
+
+  const byStage = new Map(data!.stages.map((s) => [s.stage, s]));
+  const chain = MAIN_CHAIN.map((s) => byStage.get(s)!);
+  const branches = data!.stages.filter((s) => !MAIN_CHAIN.includes(s.stage));
+  const totalReached = chain.reduce((n, s) => n + s.reached, 0);
+  if (totalReached === 0) {
+    return (
+      <Card title="销售漏斗">
+        <EmptyState icon="📊" text="还没有询盘进入漏斗。询盘创建后会自动记录阶段流转。" />
+      </Card>
+    );
+  }
+  const sel = selected ? byStage.get(selected) : null;
+
+  return (
+    <Card
+      title="销售漏斗"
+      extra={
+        <span className="flex items-center gap-2 text-xs text-slate-400">
+          {branches.map((b) => (
+            <span key={b.stage} className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
+              {b.label} {b.count}
+            </span>
+          ))}
+        </span>
+      }
+    >
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart data={chain} layout="vertical" margin={{ top: 4, right: 48, bottom: 4, left: 8 }}
+                  barSize={18}>
+          <XAxis type="number" hide />
+          <YAxis type="category" dataKey="label" width={64} tick={{ fontSize: 12, fill: "#475569" }}
+                 axisLine={false} tickLine={false} />
+          <Tooltip
+            cursor={{ fill: "rgba(148,163,184,0.08)" }}
+            formatter={(value: number, _name, item) => {
+              const s = item.payload as FunnelStage;
+              return [`触达 ${s.reached} 个（当前停留 ${s.count}）`, s.label];
+            }}
+            contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }}
+          />
+          <Bar dataKey="reached" radius={[4, 8, 8, 4]} isAnimationActive={false}
+               onClick={(_d, i) => setSelected(chain[i].stage === selected ? null : chain[i].stage)}
+               className="cursor-pointer">
+            {chain.map((_, i) => <Cell key={i} fill={CHAIN_COLORS[i]} fillOpacity={selected == null || selected === chain[i].stage ? 1 : 0.35} />)}
+            <LabelList dataKey="reached" position="right" offset={8} formatter={(v: number) => (v > 0 ? v : "")}
+                       style={{ fill: "#64748b", fontSize: 11 }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+
+      <table className="mt-1 w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
+            <th className="py-1.5 font-medium">阶段</th>
+            <th className="py-1.5 text-right font-medium">触达</th>
+            <th className="py-1.5 text-right font-medium">停留中</th>
+            <th className="py-1.5 text-right font-medium">转化到下一阶段</th>
+            <th className="py-1.5 text-right font-medium">停留时长中位数</th>
+          </tr>
+        </thead>
+        <tbody>
+          {chain.map((s) => (
+            <tr key={s.stage} onClick={() => setSelected(s.stage === selected ? null : s.stage)}
+                className={`cursor-pointer border-b border-slate-50 transition-colors hover:bg-slate-50 ${selected === s.stage ? "bg-brand-50/60" : ""}`}>
+              <td className="py-1.5">
+                <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ background: CHAIN_COLORS[MAIN_CHAIN.indexOf(s.stage)] }} />
+                {s.label}
+              </td>
+              <td className="py-1.5 text-right tabular-nums text-slate-700">{s.reached}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-500">{s.count}</td>
+              <td className="py-1.5 text-right tabular-nums">
+                <span className={s.conversion_to_next != null && s.conversion_to_next >= 0.5 ? "text-emerald-600" : "text-slate-600"}>
+                  {fmtConv(s.conversion_to_next)}
+                </span>
+              </td>
+              <td className="py-1.5 text-right tabular-nums text-slate-600">{fmtHours(s.median_dwell_hours)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <p className="mt-2 text-xs leading-relaxed text-slate-400">
+        {sel
+          ? <>「{sel.label}」：历史上有 {sel.reached} 个询盘进入过该阶段，{sel.count} 个仍停留在这里。
+             {sel.next_stage
+               ? <>推进到「{byStage.get(sel.next_stage)?.label}」的比例为 {fmtConv(sel.conversion_to_next)}。</>
+               : <>这是主链终点，成交即归档。</>}
+             停留时长按进入该阶段到离开（或至今）计算，仍在阶段的按当前时刻截断，中位数是保守下界。</>
+          : <>触达 = 曾进入过该阶段的询盘数；点击任一阶段查看口径说明。停留时长仍在计时的询盘按"至今"截断，属右删失的保守估计。</>}
+      </p>
+    </Card>
+  );
+}
 
 export default function Analytics() {
   const { data, isLoading, error, refetch } = useQuery({
@@ -42,6 +171,7 @@ export default function Analytics() {
         <div className="card p-4"><div className="text-2xl font-bold text-emerald-600">${a.approved_quote_amount.toFixed(0)}</div><div className="text-xs text-slate-500">已批准报价金额（内部统计）</div></div>
       </div>
       <div className="grid grid-cols-2 gap-4">
+        <div className="col-span-2"><FunnelCard /></div>
         <Card title="询盘阶段分布">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={stageData}>

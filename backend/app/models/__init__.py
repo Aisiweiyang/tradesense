@@ -2,7 +2,8 @@
 from .base import Base, OrgMixin, TZDateTime, TimestampMixin, utcnow
 from .org import Organization, Role, User
 from .customer import Contact, Customer
-from .inquiry import ConversationMessage, ConversationThread, Inquiry
+from .inquiry import (ConversationMessage, ConversationThread, Inquiry,
+                      InquiryStageEvent, FUNNEL_STAGES, FUNNEL_STAGE_LABELS, FUNNEL_NEXT)
 from .requirement import ClarificationLog, RequirementHistory, RequirementSlot, RequirementState
 from .product import Certification, Product, ProductVariant, Supplier, SupplierProduct
 from .quote import PriceRule, Quote, QuoteItem, QuoteSheet
@@ -20,7 +21,8 @@ __all__ = [
     "Base", "OrgMixin", "TimestampMixin", "utcnow",
     "Organization", "Role", "User",
     "Customer", "Contact",
-    "Inquiry", "ConversationThread", "ConversationMessage",
+    "Inquiry", "ConversationThread", "ConversationMessage", "InquiryStageEvent",
+    "FUNNEL_STAGES", "FUNNEL_STAGE_LABELS", "FUNNEL_NEXT",
     "RequirementState", "RequirementSlot", "RequirementHistory", "ClarificationLog",
     "Product", "ProductVariant", "Supplier", "SupplierProduct", "Certification",
     "Quote", "QuoteItem", "QuoteSheet", "PriceRule",

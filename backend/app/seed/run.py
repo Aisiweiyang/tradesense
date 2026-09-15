@@ -350,7 +350,37 @@ def seed_demo(db: Session) -> None:
     from .shipments_seed import seed_shipments
     seed_shipments(db, org.id, user.id)
 
+    # ------------------------------------------------- 漏斗阶段事件回填（第六阶段演示）
+    _backfill_stage_events(db, org.id)
+
     audit(db, org.id, user.id, "demo.seed", "organization", org.id, {"products": len(PRODUCTS)})
+
+
+def _backfill_stage_events(db: Session, org_id: int) -> None:
+    """演示询盘按当前阶段回填阶段事件：new 起步沿主链推进，lost/dormant 走 quoted 分支，
+    时间在 created_at 与现在之间均匀分布，让漏斗报表有真实的分布可看。"""
+    from ..models import FUNNEL_NEXT, InquiryStageEvent
+
+    now = _utcnow()
+    inquiries = db.scalars(select(Inquiry).where(Inquiry.org_id == org_id)).all()
+    for inq in inquiries:
+        target = inq.stage or "new"
+        chain = ["new"]
+        if target in ("lost", "dormant"):
+            chain += ["qualified", "clarifying", "quoted", target]
+        else:
+            while chain[-1] != target and FUNNEL_NEXT.get(chain[-1]):
+                chain.append(FUNNEL_NEXT[chain[-1]])
+        start = inq.created_at or now
+        elapsed = max((now - start).total_seconds(), 0.0)
+        step = elapsed * 0.9 / max(len(chain) - 1, 1)
+        for i, stage in enumerate(chain):
+            db.add(InquiryStageEvent(
+                org_id=org_id, inquiry_id=inq.id,
+                from_stage=chain[i - 1] if i else "",
+                to_stage=stage,
+                occurred_at=start + timedelta(seconds=step * i)))
+    db.flush()
 
 
 def _thread(db: Session, org_id: int, inq: Inquiry, channel: str = "manual"):

@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session
 from ...database import get_db
 from ...deps import OrgScope, get_scope, order_by, paginate
 from ...models import (ClarificationLog, ConversationMessage, Customer,
-                       Inquiry, MatchResult, Product)
+                       Inquiry, InquiryStageEvent, MatchResult, Product,
+                       FUNNEL_STAGES)
 from ...schemas import (HistoryOut, InquiryCreate, InquiryDetail, InquiryOut,
                         MatchOut, MessageIn, MessageOut, SlotOut, SlotSetIn)
 from ...services.audit import audit
@@ -130,6 +131,9 @@ def create_inquiry(body: InquiryCreate, scope: OrgScope = Depends(get_scope),
         customer.last_contact_at = _utcnow()
         if not customer.next_follow_up_at:
             customer.next_follow_up_at = _utcnow() + __import__("datetime").timedelta(days=3)
+    db.add(InquiryStageEvent(org_id=scope.org_id, inquiry_id=inq.id,
+                             from_stage="", to_stage=inq.stage or "new",
+                             actor_user_id=scope.user.id))
     audit(db, scope.org_id, scope.user.id, "inquiry.create", "inquiry", inq.id)
     db.commit()
     return {**InquiryDetail.model_validate(inq).model_dump(mode="json"),
@@ -330,8 +334,15 @@ def set_status(inquiry_id: int, body: dict, scope: OrgScope = Depends(get_scope)
         inq.status = body["status"]
     if body.get("quality_flag") in ("normal", "low_quality", "suspected_fraud"):
         inq.quality_flag = body["quality_flag"]
-    if body.get("stage"):
-        inq.stage = body["stage"]
+    old_stage = inq.stage or "new"
+    new_stage = body.get("stage") or ""
+    if not new_stage and inq.status in ("won", "lost"):
+        new_stage = inq.status  # 终态状态同步漏斗阶段
+    if new_stage and new_stage in FUNNEL_STAGES and new_stage != old_stage:
+        inq.stage = new_stage
+        db.add(InquiryStageEvent(org_id=scope.org_id, inquiry_id=inq.id,
+                                 from_stage=old_stage, to_stage=new_stage,
+                                 actor_user_id=scope.user.id))
     audit(db, scope.org_id, scope.user.id, "inquiry.status", "inquiry", inq.id, body)
     db.commit()
     return InquiryOut.model_validate(inq).model_dump(mode="json")
