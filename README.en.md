@@ -75,10 +75,32 @@ docker compose up --build
 ## 🧪 Tests
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest   # 165 tests: unit + API + scenarios + isolation + idempotency
-cd frontend && npm test                        # 27 tests: components + i18n + API client
+cd backend && .venv/Scripts/python -m pytest   # 203 tests: unit + API + scenarios + isolation + funnel/KB/FX
+cd frontend && npx vitest run                  # 36 tests: components + i18n + API client + pages
 cd frontend && npx playwright test             # 3 browser E2E flows (services must be running)
 ```
+
+## 🖼️ Screenshots
+
+![Analytics dashboard with sales funnel](docs/phase1-screenshots/07-analytics.png)
+
+![Knowledge base](docs/phase1-screenshots/11-knowledge.png)
+
+More under [docs/phase1-screenshots/](docs/phase1-screenshots/).
+
+## ❓ FAQ
+
+**Do I need an AI API key?**
+No. Every core flow works without AI (deterministic mode); AI is optional for summarizing/polishing and its output always needs human confirmation.
+
+**Where is my data?**
+A single SQLite file by default (`backend/data/`, auto-created); PostgreSQL is supported (see docs/03). All business data is organization-isolated.
+
+**Will the system send emails on my behalf?**
+Never. Quotes need human approval and reply drafts must be approved then sent manually.
+
+**Port already in use?**
+Set `TRADESENSE_BACKEND_PORT` / `TRADESENSE_FRONTEND_PORT` before starting (see docs/02).
 
 ## 📁 Repository layout
 
@@ -142,6 +164,8 @@ Documentation is maintained in Chinese under [`docs/`](docs/) (20 files). Quick 
 ## ⚠️ Disclaimer
 
 System hints (glossary, duty/certification reminders) are business aids only and **do not constitute legal, tax, customs or certification conclusions**. For terms like DDP, verify duty rates and destination compliance with your freight forwarder and professional advisers.
+
+All customers, suppliers, emails, documents and quotes in the repo are **fictional demo data**.
 
 ---
 

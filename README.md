@@ -69,10 +69,32 @@ docker compose up --build
 ## 🧪 测试
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest      # 165 个测试：单元+API+场景+隔离+幂等+权限
-cd frontend && npm test                            # 27 个测试：组件+i18n+API 客户端+页面冒烟
+cd backend && .venv/Scripts/python -m pytest      # 203 个测试：单元+API+场景+隔离+幂等+权限+漏斗/知识库/汇率
+cd frontend && npx vitest run                      # 36 个测试：组件+i18n+API 客户端+页面冒烟+新功能
 cd frontend && npx playwright test                 # 3 条浏览器 E2E 链路（需先启动前后端）
 ```
+
+## 🖼️ 界面速览
+
+![数据看板（销售漏斗）](docs/phase1-screenshots/07-analytics.png)
+
+![知识库](docs/phase1-screenshots/11-knowledge.png)
+
+更多截图见 [docs/phase1-screenshots/](docs/phase1-screenshots/)。
+
+## ❓ FAQ
+
+**必须配置 AI 密钥吗？**
+不需要。无 AI 时全部核心流程可用（确定性模式），AI 仅用于可选的摘要润色，且输出需人工确认。
+
+**数据存在哪里？**
+默认单文件 SQLite（`backend/data/`，自动创建）；可切换 PostgreSQL（见 docs/03）。所有业务数据按组织隔离。
+
+**系统会替我发邮件吗？**
+不会。报价需人工批准、回复草稿需人工批准后自行发送，系统永不自动发送任何消息。
+
+**端口被占用怎么办？**
+启动前设置 `TRADESENSE_BACKEND_PORT` / `TRADESENSE_FRONTEND_PORT` 即可，详见 docs/02。
 
 ## 📁 目录结构
 
@@ -132,3 +154,5 @@ cd frontend && npx playwright test                 # 3 条浏览器 E2E 链路�
 ## ⚠️ 重要声明
 
 系统提示（术语解释、关税/认证提醒）仅作业务辅助，**不构成法律、税务、报关或认证结论**；DDP 等条款的税率、目的国合规请以货代与专业机构意见为准。
+
+仓库与文档中的所有客户、供应商、邮箱、单证与报价均为**虚构演示数据**；如部署实例产生真实业务数据，请自行承担保密义务。
