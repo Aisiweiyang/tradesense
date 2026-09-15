@@ -108,6 +108,20 @@ def test_approved_pdf_has_no_watermark(client, inquiry_with_quotes):
         assert pdf.metadata.get("Subject") != "NOT FORMAL - unapproved draft"
 
 
+def test_pdf_download_via_query_token(client, inquiry_with_quotes):
+    """浏览器下载通道：JWT 放 ?access_token= 也能出 PDF；无任何令牌则 401。"""
+    h, inq_id, q1, q2 = inquiry_with_quotes
+    sheet = client.post("/api/quote-sheets", json={
+        "inquiry_id": inq_id, "quote_ids": [q1["id"], q2["id"]]}, headers=h).json()
+    token = h["Authorization"].removeprefix("Bearer ")
+    r = client.get(f"/api/quote-sheets/{sheet['id']}/pdf?access_token={token}")
+    assert r.status_code == 200
+    assert r.content[:4] == b"%PDF"
+    r = client.get(f"/api/quote-sheets/{sheet['id']}/pdf")
+    assert r.status_code == 401
+    assert r.json()["error"]["code"] == "unauthorized"
+
+
 def test_sheet_org_isolation(client, other_org, inquiry_with_quotes):
     h, inq_id, q1, q2 = inquiry_with_quotes
     sheet = client.post("/api/quote-sheets", json={

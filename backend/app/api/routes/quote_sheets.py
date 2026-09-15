@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...database import get_db
 from ...deps import OrgScope, get_scope
 from ...rbac import require_role
-from ...models import QuoteSheet
+from ...models import QuoteSheet, User
 from ...security import decode_token
 from ...services.audit import audit
 from ...services.quote_sheet import create_sheet, render_sheet_pdf
@@ -103,8 +103,30 @@ def reject(sheet_id: int, scope: OrgScope = Depends(get_scope),
 
 
 @router.get("/{sheet_id}/pdf")
-def export_pdf(sheet_id: int, request=None, access_token: str = Query(""),
-               scope: OrgScope = Depends(get_scope), db: Session = Depends(get_db)):
+def export_pdf(sheet_id: int, request: Request,
+               access_token: str = Query("", alias="access_token"),
+               db: Session = Depends(get_db)):
+    """对客报价单 PDF。JWT 走 Authorization 头或 `?access_token=`（浏览器下载
+    无法带自定义头）。org 隔离不受影响：org_id 仍取自令牌。"""
+    from fastapi.responses import Response
+
+    from ...security import decode_token
+
+    token = access_token or request.headers.get("authorization", "").removeprefix("Bearer ")
+    if not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            detail={"code": "unauthorized", "message": "缺少访问令牌"})
+    try:
+        payload = decode_token(token)
+        user = db.get(User, int(payload["sub"]))
+        if user is None or not user.is_active:
+            raise ValueError
+        scope = OrgScope(user)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            detail={"code": "invalid_token", "message": "令牌无效或已过期"})
     sheet = _get(db, scope.org_id, sheet_id)
     data = render_sheet_pdf(db, scope.org_id, sheet)
     audit(db, scope.org_id, scope.user.id, "quote_sheet.export_pdf", "quote_sheet",
