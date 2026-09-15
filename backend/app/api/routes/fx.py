@@ -1,17 +1,17 @@
 """汇率配置路由：手工维护，manager+。存储方向按币种字母序规范化。"""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...database import get_db
-from ...deps import OrgScope
+from ...deps import OrgScope, get_scope
 from ...models import ExchangeRate, User
 from ...rbac import require_role
 from ...services.audit import audit
-from ...services.fx import normalize
+from ...services.fx import MISSING, normalize, resolve
 
 router = APIRouter(prefix="/fx", tags=["fx"])
 
@@ -22,6 +22,16 @@ class FxSetIn(BaseModel):
     base_currency: str = Field(pattern=CCY)
     quote_currency: str = Field(pattern=CCY)
     rate: float = Field(gt=0)
+
+
+@router.get("/resolve")
+def resolve_rate(from_ccy: str = Query(..., min_length=3, max_length=3),
+                 to_ccy: str = Query(..., min_length=3, max_length=3),
+                 scope: OrgScope = Depends(get_scope), db: Session = Depends(get_db)):
+    """报价面板预览当前生效汇率：登录即可（member 也要能看），不含任何敏感配置。"""
+    rate, note = resolve(db, scope.org_id, from_ccy, to_ccy)
+    return {"from_currency": from_ccy.upper(), "to_currency": to_ccy.upper(),
+            "rate": rate, "configured": not note.startswith(MISSING)}
 
 
 @router.get("")

@@ -458,17 +458,32 @@ interface QuoteDetail extends Quote {
 function QuotesTab({ iid }: { iid: number }) {
   const qc = useQueryClient();
   const [detail, setDetail] = useState<number | null>(null);
-  const [form, setForm] = useState({ product_id: "", quantity: "1000", incoterm: "FOB", margin_rate: "0.15", printing: false });
-  const products = useQuery({ queryKey: ["products-lite"], queryFn: () => get<{ items: { id: number; sku: string; name_en: string }[] }>("/products?page=1&page_size=100") });
+  const [form, setForm] = useState({ product_id: "", quantity: "1000", incoterm: "FOB", margin_rate: "0.15", printing: false, supplier_product_id: "" });
+  const products = useQuery({ queryKey: ["products-lite"], queryFn: () => get<{ items: { id: number; sku: string; name_en: string; currency: string }[] }>("/products?page=1&page_size=100") });
   const quotes = useQuery({ queryKey: ["quotes", iid], queryFn: () => get<{ items: Quote[] }>(`/quotes/by-inquiry/${iid}`) });
   const create = useMutation({
-    mutationFn: () => post("/quotes", { inquiry_id: iid, product_id: Number(form.product_id), quantity: Number(form.quantity), incoterm: form.incoterm, margin_rate: Number(form.margin_rate), printing: form.printing }),
+    mutationFn: () => post("/quotes", { inquiry_id: iid, product_id: Number(form.product_id), quantity: Number(form.quantity), incoterm: form.incoterm, margin_rate: Number(form.margin_rate), printing: form.printing, ...(form.supplier_product_id ? { supplier_product_id: Number(form.supplier_product_id) } : {}) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["quotes", iid] }); qc.invalidateQueries({ queryKey: ["inquiry", iid] }); },
   });
   const detailQ = useQuery({
     queryKey: ["quote", detail],
     queryFn: () => get<QuoteDetail>(`/quotes/${detail}`),
     enabled: !!detail,
+  });
+  const selProduct = products.data?.items.find((p) => p.id === Number(form.product_id));
+  const supplierQuotes = useQuery({
+    queryKey: ["supplier-quotes", form.product_id],
+    queryFn: () => get<{ items: { id: number; supplier_name: string; cost_price: number; currency: string; lead_time_days: number }[] }>(
+      `/products/${form.product_id}/supplier-quotes`),
+    enabled: !!form.product_id,
+  });
+  const selSupplier = supplierQuotes.data?.items.find((q) => q.id === Number(form.supplier_product_id));
+  const costCcy = selSupplier?.currency || selProduct?.currency || "USD";
+  const fxPreview = useQuery({
+    queryKey: ["fx-resolve", costCcy],
+    queryFn: () => get<{ from_currency: string; to_currency: string; rate: number; configured: boolean }>(
+      `/fx/resolve?from_ccy=${costCcy}&to_ccy=USD`),
+    enabled: !!selProduct && costCcy !== "USD",
   });
   const approve = useMutation({
     mutationFn: (id: number) => post(`/quotes/${id}/approve`),
@@ -552,12 +567,25 @@ function QuotesTab({ iid }: { iid: number }) {
         <div className="space-y-3">
           <div>
             <label className="label">产品</label>
-            <select className="input" value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })}>
+            <select className="input" value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value, supplier_product_id: "" })}>
               <option value="">选择产品…</option>
               {products.data?.items.map((p) => (
                 <option key={p.id} value={p.id}>{p.sku} · {p.name_en}</option>
               ))}
             </select>
+            {form.product_id && (
+              <>
+                <label className="label mt-2">成本来源</label>
+                <select className="input" value={form.supplier_product_id} onChange={(e) => setForm({ ...form, supplier_product_id: e.target.value })}>
+                  <option value="">产品阶梯价</option>
+                  {supplierQuotes.data?.items.map((q) => (
+                    <option key={q.id} value={q.id}>
+                      供应商：{q.supplier_name} · {q.currency} {q.cost_price} · {q.lead_time_days}天
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -579,6 +607,15 @@ function QuotesTab({ iid }: { iid: number }) {
             <input type="checkbox" checked={form.printing} onChange={(e) => setForm({ ...form, printing: e.target.checked })} />
             含 Logo 印刷（版费摊销）
           </label>
+          {selProduct && costCcy !== "USD" && (
+            <p className={`rounded-lg px-2.5 py-1.5 text-xs leading-4 ${fxPreview.data?.configured ? "bg-slate-50 text-slate-500" : "bg-amber-50 text-amber-700"}`}>
+              {fxPreview.data
+                ? fxPreview.data.configured
+                  ? `成本为 ${costCcy}，将按汇率表 1 ${costCcy} ≈ ${fxPreview.data.rate.toPrecision(6)} USD 折算（另加 2% 缓冲）`
+                  : `汇率表未配置 ${costCcy}/USD，将按 1:1 折算并在报价中提示缺失；请到「设置 → 汇率」录入`
+                : "正在查询生效汇率…"}
+            </p>
+          )}
           <button className="btn-primary w-full justify-center" disabled={!form.product_id || create.isPending} onClick={() => create.mutate()}>
             {create.isPending ? "计算中…" : "计算并创建草稿"}
           </button>

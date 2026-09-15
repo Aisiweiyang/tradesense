@@ -15,6 +15,7 @@ S12 同一消息两种颜色 → conflicting
 S13 休眠客户重新激活
 S14 CPC 认证儿童杯
 S15 样品 + 付款方式多轮
+S16 已成交（漏斗终点演示，含完整阶段链）
 """
 from __future__ import annotations
 
@@ -194,6 +195,21 @@ def seed_inquiries(db: Session, org_id: int, user_id: int) -> None:
     _say(db, org_id, i15, "Payment terms: we usually do 30% deposit and 70% against B/L copy.",
          days_offset=2)
     _match(db, org_id, i15)
+
+    # ---- S16 已成交（漏斗终点演示） --------------------------------------------------
+    c16, t16 = _cust(db, org_id, "GiftingHouse Ltd", "United Kingdom", "email",
+                     "Oliver Grant", "oliver@giftinghouse.co.uk", "won", 12)
+    i16 = _mk_inquiry(db, org_id, user_id, c16, t16, "Travel mugs 1200pcs — corporate gift order",
+                      channel="email", status_="won", stage="won", created_days_ago=40)
+    _say(db, org_id, i16, "We need 1,200 insulated travel mugs 450ml with our logo, FOB Felixstowe, "
+                          "delivery within 45 days of order.", days_offset=38)
+    _match(db, org_id, i16)
+    _quote(db, org_id, i16, "TS-TM-001", 1200, "FOB", margin=0.18, approve=True,
+           printing=True, dest_iso="GB", days_ago=30)
+    inq_status = db.get(Inquiry, i16.id)
+    inq_status.status = "won"
+    inq_status.stage = "won"
+    db.flush()
 
     # ------------------------------------------------------------ 回复草稿
     for inq, kind, tone in ((i1, "first_reply", "formal"),

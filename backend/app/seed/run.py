@@ -357,7 +357,7 @@ def seed_demo(db: Session) -> None:
     # ------------------------------------------------- 汇率表（第六阶段演示，手工口径）
     # 存储方向按币种字母序规范化：CNY/USD 存 1/7.2（等值 USD/CNY=7.2）、EUR/USD 存 1.08
     db.add(ExchangeRate(org_id=org.id, base_currency="CNY", quote_currency="USD",
-                        rate=round(1 / 7.2, 8), updated_by_user_id=user.id))
+                        rate=1 / 7.2, updated_by_user_id=user.id))
     db.add(ExchangeRate(org_id=org.id, base_currency="EUR", quote_currency="USD",
                         rate=1.08, updated_by_user_id=user.id))
     db.flush()

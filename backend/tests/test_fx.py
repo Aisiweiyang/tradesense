@@ -126,6 +126,27 @@ def test_quote_integration_fx_table_and_explicit_override(client, org, other_org
     assert any("汇率" in m for m in d3["missing"])
 
 
+def test_resolve_endpoint_visible_to_all_logged_in(client, db):
+    """报价面板的汇率预览：member 可读，未配置时 configured=false 且回退 1.0。"""
+    from app.models import User
+    from app.security import hash_password
+    db.add(User(org_id=1, email="fxmember2@test.cn", name="m2",
+                password_hash=hash_password("password123"), role="member"))
+    db.commit()
+    member = auth_headers(client, "fxmember2@test.cn")
+
+    r = client.get("/api/fx/resolve", params={"from_ccy": "USD", "to_ccy": "CNY"}, headers=member)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["configured"] is False and body["rate"] == 1.0
+
+    _set_rate(db, 1, "CNY", "USD", 1 / 7.2)
+    body = client.get("/api/fx/resolve", params={"from_ccy": "USD", "to_ccy": "cny"},
+                      headers=member).json()
+    assert body["configured"] is True
+    assert body["rate"] == pytest.approx(7.2)
+
+
 def test_fx_api_permission(client, db):
     from app.models import User
     from app.security import hash_password
