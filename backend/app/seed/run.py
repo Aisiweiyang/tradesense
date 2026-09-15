@@ -16,9 +16,10 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import (Contact, ConversationThread, Customer, FollowUpTask, Inquiry,
-                      KnowledgeDocument, Organization, Product, Quote, ReplyDraft, Role,
-                      Supplier, SupplierProduct, User, ConnectorAccount, SyncLog, SyncCursor)
+from ..models import (Contact, ConversationThread, Customer, ExchangeRate, FollowUpTask,
+                      Inquiry, KnowledgeDocument, Organization, Product, Quote, ReplyDraft,
+                      Role, Supplier, SupplierProduct, User, ConnectorAccount, SyncLog,
+                      SyncCursor)
 from ..security import hash_password
 from ..services.audit import audit
 from ..services.imports import _parse_tiers
@@ -352,6 +353,14 @@ def seed_demo(db: Session) -> None:
 
     # ------------------------------------------------- 知识库（第六阶段演示）
     _seed_knowledge(db, org.id)
+
+    # ------------------------------------------------- 汇率表（第六阶段演示，手工口径）
+    # 存储方向按币种字母序规范化：CNY/USD 存 1/7.2（等值 USD/CNY=7.2）、EUR/USD 存 1.08
+    db.add(ExchangeRate(org_id=org.id, base_currency="CNY", quote_currency="USD",
+                        rate=round(1 / 7.2, 8), updated_by_user_id=user.id))
+    db.add(ExchangeRate(org_id=org.id, base_currency="EUR", quote_currency="USD",
+                        rate=1.08, updated_by_user_id=user.id))
+    db.flush()
 
     # ------------------------------------------------- 漏斗阶段事件回填（第六阶段演示）
     _backfill_stage_events(db, org.id)

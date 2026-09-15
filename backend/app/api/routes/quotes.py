@@ -54,18 +54,33 @@ def create_quote(body: QuoteCreateIn, scope: OrgScope = Depends(get_scope),
         sup = db.get(Supplier, sp.supplier_id)
         base_override = float(sp.cost_price)
         base_source = f"供应商比价：{sup.name if sup else ''} 报价 {sp.cost_price:g} {sp.currency}"
-        if sp.currency != body.currency:
-            out_hint = (f"供应商报价币种 {sp.currency} 与报价币种 {body.currency} 不同，"
-                        "请在汇率中填入折算汇率")
-            # surfaced via assumptions below
+
+    # 汇率优先级：用户显式指定 > 汇率表（成本币种→报价币种）> 回退 1.0 + missing 提示
+    cost_ccy = (sp.currency if body.supplier_product_id and sp is not None else None) \
+        or p.currency or "USD"
+    fx_rate = body.exchange_rate
+    fx_missing = ""
+    fx_source = ""
+    if fx_rate is None and cost_ccy.upper() != (body.currency or "USD").upper():
+        from ...services.fx import MISSING, resolve
+        fx_rate, note = resolve(db, scope.org_id, cost_ccy, body.currency)
+        if note.startswith(MISSING):
+            fx_missing = note.split(":", 1)[1]
+        else:
+            fx_source = note
+
     out = compute_quote(QuoteInput(
         product=p, quantity=body.quantity, incoterm=body.incoterm, currency=body.currency,
         margin_rate=body.margin_rate, destination_iso=body.destination_iso,
         printing=body.printing, mold_lump=body.mold_lump,
-        packaging_unit=body.packaging_unit, exchange_rate=body.exchange_rate,
+        packaging_unit=body.packaging_unit, exchange_rate=fx_rate or 1.0,
         valid_days=body.valid_days,
         base_cost_override=base_override, base_cost_source=base_source), rules)
-    if body.supplier_product_id and sp.currency != body.currency:
+    if fx_source:
+        out.assumptions = list(out.assumptions) + [fx_source]
+    if fx_missing:
+        out.missing = list(out.missing) + [fx_missing]
+    elif body.supplier_product_id and sp.currency != body.currency and fx_rate is None:
         out.assumptions = list(out.assumptions) + [
             f"供应商报价币种 {sp.currency} 与报价币种 {body.currency} 不同；"
             "如需折算请填写汇率（当前按 1:1 计）"]

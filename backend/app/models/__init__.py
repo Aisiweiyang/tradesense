@@ -11,7 +11,7 @@ from .matching import MatchResult
 from .followup import FollowUpTask
 from .reply import ReplyDraft
 from .connector import ConnectorAccount, ExternalMessage, SyncCursor, SyncLog
-from .misc import AuditEvent, KnowledgeDocument
+from .misc import AuditEvent, ExchangeRate, KnowledgeDocument
 from .import_preview import ImportPreview, purge_expired
 from .shipment import (Shipment, Document, DocumentField, ShipmentIssue,
                         DocumentFieldChange, DocRuleConfig, SHIPMENT_STATUSES,
@@ -30,7 +30,7 @@ __all__ = [
     "FollowUpTask",
     "ReplyDraft",
     "ConnectorAccount", "ExternalMessage", "SyncCursor", "SyncLog",
-    "KnowledgeDocument", "AuditEvent", "ImportPreview", "purge_expired",
+    "KnowledgeDocument", "AuditEvent", "ExchangeRate", "ImportPreview", "purge_expired",
     "Shipment", "Document", "DocumentField", "ShipmentIssue", "DocumentFieldChange",
     "DocRuleConfig",
     "SHIPMENT_STATUSES", "DOC_TYPES", "RULE_CODES", "DEFAULT_REQUIRED_DOCS",

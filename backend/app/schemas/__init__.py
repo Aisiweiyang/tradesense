@@ -285,7 +285,8 @@ class QuoteCreateIn(BaseModel):
     printing: bool = False
     mold_lump: float = Field(default=0.0, ge=0)
     packaging_unit: Optional[float] = None
-    exchange_rate: float = Field(default=1.0, gt=0)
+    # None=未显式指定：按成本币种→报价币种查汇率表（未配置回退 1.0）；显式传入则优先于汇率表
+    exchange_rate: Optional[float] = Field(default=None, gt=0)
     customer_price: Optional[float] = None
     valid_days: int = Field(default=30, ge=1, le=180)
     supplier_product_id: Optional[int] = None
