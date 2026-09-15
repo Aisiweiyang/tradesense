@@ -37,7 +37,9 @@ def list_knowledge(q: str = "", scope: OrgScope = Depends(require_role("knowledg
     stmt = select(KnowledgeDocument).where(KnowledgeDocument.org_id == scope.org_id)
     q = q.strip()
     if q:
-        like = f"%{q}%"
+        # 转义 LIKE 通配符，% 和 _ 按字面搜索
+        safe = q.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+        like = f"%{safe}%"
         stmt = stmt.where(or_(KnowledgeDocument.title.like(like),
                               KnowledgeDocument.content.like(like),
                               KnowledgeDocument.tags.like(like)))

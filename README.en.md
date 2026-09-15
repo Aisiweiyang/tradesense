@@ -75,7 +75,7 @@ docker compose up --build
 ## 🧪 Tests
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest   # 205 tests: unit + API + scenarios + isolation + funnel/KB/FX
+cd backend && .venv/Scripts/python -m pytest   # 209 tests: unit + API + scenarios + isolation + funnel/KB/FX
 cd frontend && npx vitest run                  # 36 tests: components + i18n + API client + pages
 cd frontend && npx playwright test             # 3 browser E2E flows (services must be running)
 ```

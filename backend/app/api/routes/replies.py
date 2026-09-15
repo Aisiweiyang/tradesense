@@ -111,7 +111,8 @@ def generate(body: ReplyGenerateIn, scope: OrgScope = Depends(get_scope),
         created_by_user_id=scope.user.id,
     )
     db.add(draft)
-    audit(db, scope.org_id, scope.user.id, "reply.generate", "reply", 0,
+    db.flush()
+    audit(db, scope.org_id, scope.user.id, "reply.generate", "reply", draft.id,
           {"kind": body.kind, "tone": body.tone, "inquiry": inq.id})
     db.commit()
     return _dump(draft)

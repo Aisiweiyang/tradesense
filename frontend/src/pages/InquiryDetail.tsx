@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { del, get, post, patch } from "../api/client";
+import { del, get, getToken, post, patch } from "../api/client";
 import { Badge, Card, CompletenessRing, EmptyState, ErrorState, KV, Loading } from "../components/ui";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -458,6 +458,10 @@ interface QuoteDetail extends Quote {
 function QuotesTab({ iid }: { iid: number }) {
   const qc = useQueryClient();
   const [detail, setDetail] = useState<number | null>(null);
+  const [selQuotes, setSelQuotes] = useState<number[]>([]);
+  const me = useQuery({ queryKey: ["me"], queryFn: () => get<{ role: string }>("/auth/me"),
+                        staleTime: 5 * 60 * 1000 });
+  const canApprove = me.data?.role === "manager" || me.data?.role === "owner";
   const [form, setForm] = useState({ product_id: "", quantity: "1000", incoterm: "FOB", margin_rate: "0.15", printing: false, supplier_product_id: "" });
   const products = useQuery({ queryKey: ["products-lite"], queryFn: () => get<{ items: { id: number; sku: string; name_en: string; currency: string }[] }>("/products?page=1&page_size=100") });
   const quotes = useQuery({ queryKey: ["quotes", iid], queryFn: () => get<{ items: Quote[] }>(`/quotes/by-inquiry/${iid}`) });
@@ -489,6 +493,21 @@ function QuotesTab({ iid }: { iid: number }) {
     mutationFn: (id: number) => post(`/quotes/${id}/approve`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["quote", detail] }); qc.invalidateQueries({ queryKey: ["quotes", iid] }); },
   });
+  const sheets = useQuery({
+    queryKey: ["quote-sheets", iid],
+    queryFn: () => get<{ items: SheetSummary[] }>(`/quote-sheets?inquiry_id=${iid}`),
+  });
+  const buildSheet = useMutation({
+    mutationFn: () => post("/quote-sheets", { inquiry_id: iid, quote_ids: selQuotes }),
+    onSuccess: () => {
+      setSelQuotes([]);
+      qc.invalidateQueries({ queryKey: ["quote-sheets", iid] });
+    },
+  });
+  const approveSheet = useMutation({
+    mutationFn: (id: number) => post(`/quote-sheets/${id}/approve`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["quote-sheets", iid] }),
+  });
   if (quotes.isLoading) return <Loading />;
 
   return (
@@ -497,10 +516,17 @@ function QuotesTab({ iid }: { iid: number }) {
         <Card title="报价版本">
           {!quotes.data?.items.length ? <EmptyState icon="💰" text="还没有报价" /> : (
             <table className="table-base">
-              <thead><tr><th>版本</th><th>产品</th><th>数量</th><th>术语</th><th>内部成本</th><th>建议/客户价</th><th>状态</th><th></th></tr></thead>
+              <thead><tr><th></th><th>版本</th><th>产品</th><th>数量</th><th>术语</th><th>内部成本</th><th>建议/客户价</th><th>状态</th><th></th></tr></thead>
               <tbody>
                 {quotes.data.items.map((q) => (
                   <tr key={q.id}>
+                    <td>
+                      <input type="checkbox" aria-label={`选择 v${q.version}`}
+                             checked={selQuotes.includes(q.id)}
+                             disabled={!["draft", "approved"].includes(q.status)}
+                             onChange={() => setSelQuotes((sel) =>
+                               sel.includes(q.id) ? sel.filter((x) => x !== q.id) : [...sel, q.id])} />
+                    </td>
                     <td>v{q.version}</td>
                     <td className="text-xs">{q.product_name}</td>
                     <td>{q.quantity}</td>
@@ -514,7 +540,50 @@ function QuotesTab({ iid }: { iid: number }) {
               </tbody>
             </table>
           )}
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-xs text-slate-400">
+              勾选多条报价可合并为一张对客报价单（行价格按当前值快照）
+            </span>
+            <button className="btn-primary text-xs" disabled={selQuotes.length < 2 || buildSheet.isPending}
+                    onClick={() => buildSheet.mutate()}>
+              {buildSheet.isPending ? "合并中…" : `合并所选（${selQuotes.length}）为报价单`}
+            </button>
+          </div>
+          {buildSheet.error && (
+            <p className="mt-1 text-xs text-red-500">{(buildSheet.error as Error).message}</p>
+          )}
         </Card>
+
+        {sheets.data?.items.length ? (
+          <Card title="合并报价单">
+            <table className="table-base text-xs">
+              <thead><tr><th>编号</th><th>行数</th><th>小计</th><th>状态</th><th></th></tr></thead>
+              <tbody>
+                {sheets.data.items.map((sh) => (
+                  <tr key={sh.id}>
+                    <td className="font-mono">{sh.sheet_no} · v{sh.version}</td>
+                    <td>{sh.lines.length}</td>
+                    <td className="font-mono">${sh.subtotal.toFixed(2)}</td>
+                    <td><Badge value={sh.status} text={{ draft: "草稿", approved: "已批准", rejected: "已拒绝", superseded: "已替代" }[sh.status] || sh.status} /></td>
+                    <td className="space-x-2 whitespace-nowrap">
+                      <a className="text-xs text-brand-500 hover:underline"
+                         href={`/api/quote-sheets/${sh.id}/pdf?access_token=${encodeURIComponent(getToken() || "")}`}
+                         target="_blank" rel="noreferrer">PDF</a>
+                      {canApprove && sh.status !== "approved" && sh.status !== "rejected" && (
+                        <button className="text-xs text-emerald-600 hover:underline"
+                                disabled={approveSheet.isPending}
+                                onClick={() => approveSheet.mutate(sh.id)}>批准</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-2 text-[10px] text-slate-400">
+              未批准的 PDF 每页带 NOT FORM 非正式报价水印；批准后水印消失。PDF 不含内部成本。
+            </p>
+          </Card>
+        ) : null}
 
         {detail && detailQ.data && (
           <Card title={`计算明细 · v${detailQ.data.version} (${detailQ.data.incoterm})`}
@@ -635,6 +704,10 @@ interface Draft {
   status: string; facts_used: { field: string; value: string }[]; needs_confirmation: string[];
 }
 interface KbPick { id: number; title: string; tags: string }
+interface SheetSummary {
+  id: number; sheet_no: string; version: number; status: string;
+  subtotal: number; lines: { description: string; qty: number; unit_price: number }[];
+}
 const KINDS: [string, string][] = [
   ["first_reply", "首次回复"], ["ask_missing_info", "追问缺失信息"], ["product_recommend", "产品推荐"],
   ["sample", "样品沟通"], ["quote_send", "发送报价"], ["quote_follow_up", "报价后跟进"],
