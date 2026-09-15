@@ -58,6 +58,7 @@ def main() -> None:
         ("09-glossary", "/glossary"),
         ("10-followups", "/followups"),
         ("11-knowledge", "/knowledge"),
+        ("13-shipment-detail", "/shipments/1"),
     ]
     for name, path in pages:
         capture(tk, name, path)

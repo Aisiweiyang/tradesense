@@ -187,7 +187,10 @@ function ShipmentDetailPanel({ detail, onChanged }: { detail: Detail; onChanged:
         <span className="text-xs text-slate-400">{detail.incoterm} · {detail.port_of_loading} → {detail.port_of_discharge}</span>
       </span>
     } extra={
-      <RecheckButton shipmentId={detail.id} onChanged={onChanged} />
+      <span className="flex items-center gap-2">
+        <ExportReviewPackageButton shipmentId={detail.id} shipmentNo={detail.shipment_no} />
+        <RecheckButton shipmentId={detail.id} onChanged={onChanged} />
+      </span>
     }>
       <div className="mb-3 flex gap-1 border-b border-slate-100">
         {TABS.map(([key, label]) => (
@@ -203,6 +206,43 @@ function ShipmentDetailPanel({ detail, onChanged }: { detail: Detail; onChanged:
       {tab === "fields" && <FieldsTab detail={detail} onChanged={onChanged} />}
       {tab === "comms" && <CommsTab detail={detail} />}
     </Card>
+  );
+}
+
+function ExportReviewPackageButton({ shipmentId, shipmentNo }: { shipmentId: number; shipmentNo: string }) {
+  const me = useQuery({
+    queryKey: ["me"],
+    queryFn: () => get<{ role: string }>("/auth/me"),
+    staleTime: 5 * 60 * 1000,
+  });
+  const canExport = me.data?.role === "manager" || me.data?.role === "owner";
+  const [err, setErr] = useState("");
+  const exportPkg = useMutation({
+    mutationFn: async () => {
+      const r = await fetch(`/api/shipments/${shipmentId}/review-package`,
+                            { headers: { Authorization: `Bearer ${getToken()}` } });
+      if (!r.ok) throw new Error(r.status === 403 ? "需要 manager 及以上角色" : "导出失败，请重试");
+      return r.blob();
+    },
+    onSuccess: (blob) => {
+      setErr("");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${shipmentNo || shipmentId}-review-package.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    onError: (e) => setErr((e as Error).message),
+  });
+  if (!canExport) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <button className="btn-ghost text-xs" disabled={exportPkg.isPending} onClick={() => exportPkg.mutate()}>
+        {exportPkg.isPending ? "打包中…" : "⬇ 导出复核包"}
+      </button>
+      {err && <span className="text-xs text-red-500">{err}</span>}
+    </span>
   );
 }
 
