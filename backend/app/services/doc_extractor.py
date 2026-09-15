@@ -60,6 +60,7 @@ class ExtractionOutcome:
     has_text_layer: bool
     pages: int
     fields: list[ExtractedField]
+    text_head: str = ""  # 前 800 字符原文，供单证类型内容识别
 
 
 def _clean(value: str) -> str:
@@ -109,7 +110,9 @@ def extract_pdf_fields(file_path: str) -> ExtractionOutcome:
                 "description", _clean(m.group(1)), 0.85, idx, _clean(m.group(0).splitlines()[0])))
             break
 
-    return ExtractionOutcome(has_text_layer=True, pages=page_count, fields=fields)
+    text_head = " ".join(" ".join(pages_text).split())[:800]
+    return ExtractionOutcome(has_text_layer=True, pages=page_count, fields=fields,
+                             text_head=text_head)
 
 
 def normalize_value(value: str) -> str:

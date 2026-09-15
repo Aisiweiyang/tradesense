@@ -74,6 +74,13 @@ def ingest_document(db: Session, org_id: int, shipment: Shipment,
                     evidence_page=f.evidence_page, evidence_text=f.evidence_text,
                     source="extracted"))
             doc.status = "extracted"
+        if doc.doc_type == "other" and outcome.text_head:
+            sniffed = _sniff_doc_type(outcome.text_head)
+            if sniffed:
+                # 文件名没认出来的类型，按内容标题兜底；版本号按新类型重算
+                doc.doc_type = sniffed
+                doc.version = db.query(Document).filter_by(
+                    org_id=org_id, shipment_id=shipment.id, doc_type=sniffed).count() + 1
     except Exception as exc:  # noqa: BLE001 — pipeline failure must be visible & retryable
         doc.status = "failed"
         doc.extract_error = f"解析失败：{exc}"[:500]
@@ -139,6 +146,24 @@ def record_version_diff(db: Session, org_id: int, doc: Document) -> int:
     if changes:
         db.flush()
     return len(changes)
+
+
+def _sniff_doc_type(text_head: str) -> str | None:
+    """文件名无法识别时，按单证标题关键词兜底（大小写不敏感）。"""
+    t = text_head.lower()
+    for key, dtype in [
+        ("commercial invoice", "invoice"), ("发票", "invoice"),
+        ("packing list", "packing_list"), ("装箱单", "packing_list"),
+        ("bill of lading", "bill_of_lading"), ("提单", "bill_of_lading"),
+        ("letter of credit", "letter_of_credit"), ("documentary credit", "letter_of_credit"),
+        ("信用证", "letter_of_credit"),
+        ("customs declaration", "customs_declaration"), ("export declaration", "customs_declaration"),
+        ("报关", "customs_declaration"),
+        ("certificate of origin", "origin_certificate"), ("产地证", "origin_certificate"),
+    ]:
+        if key in t:
+            return dtype
+    return None
 
 
 def _guess_doc_type(filename: str) -> str:

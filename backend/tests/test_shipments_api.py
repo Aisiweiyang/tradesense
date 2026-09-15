@@ -343,3 +343,27 @@ def test_issue_action_unknown_and_bad_action(client, shipment):
     r = client.post(f"/api/shipments/issues/{issue['id']}/action",
                     json={"action": "explode"}, headers=h)
     assert r.status_code == 422
+
+
+def test_doc_type_sniffed_from_content(client, shipment):
+    """文件名无类型线索时，按单证标题内容识别为 invoice（消除 other）。"""
+    h = auth_headers(client)
+    r = _upload(client, h, shipment["id"], "scan-2026-001.pdf", _pdf_bytes("invoice.pdf"))
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["doc_type"] == "invoice", body
+    assert body["status"] == "extracted"
+
+
+def test_sniffed_type_versions_increment_per_type(client, shipment):
+    """无类型线索的文件名传两版不同发票：都识别为 invoice，版本按 invoice 递增且产生差异。"""
+    h = auth_headers(client)
+    v1 = _upload(client, h, shipment["id"], "upload_01.pdf", _pdf_bytes("invoice.pdf")).json()
+    v2 = _upload(client, h, shipment["id"], "upload_02.pdf",
+                 _pdf_bytes("invoice.pdf", invoice_no="TS-INV-9")).json()
+    assert v1["doc_type"] == v2["doc_type"] == "invoice"
+    assert v2["version"] == v1["version"] + 1
+    changes = client.get(f"/api/shipments/{shipment['id']}/field-changes",
+                         headers=h).json()["items"]
+    assert any(c["field_name"] == "invoice_no" and c["old_value"] == "TS-INV-1"
+               and c["new_value"] == "TS-INV-9" for c in changes)

@@ -25,6 +25,7 @@ function FxCard() {
   const qc = useQueryClient();
   const [form, setForm] = useState({ base_currency: "", quote_currency: "", rate: "" });
   const [msg, setMsg] = useState("");
+  const [confirmId, setConfirmId] = useState<number | null>(null);
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["fx"],
     queryFn: () => get<{ items: FxRate[] }>("/fx"),
@@ -46,7 +47,10 @@ function FxCard() {
 
   const remove = useMutation({
     mutationFn: (id: number) => del(`/fx/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["fx"] }),
+    onSuccess: () => {
+      setConfirmId(null);
+      qc.invalidateQueries({ queryKey: ["fx"] });
+    },
   });
 
   if (error) {
@@ -88,8 +92,16 @@ function FxCard() {
                       {r.updated_by_name || "—"} · {new Date(r.updated_at).toLocaleString("zh-CN")}
                     </td>
                     <td className="py-1.5 text-right">
-                      <button className="btn-ghost px-2 py-0.5 text-xs text-red-500 hover:bg-red-50"
-                              onClick={() => remove.mutate(r.id)}>删除</button>
+                      {confirmId === r.id ? (
+                        <span className="inline-flex gap-1">
+                          <button className="btn-danger px-2 py-0.5 text-xs" disabled={remove.isPending}
+                                  onClick={() => remove.mutate(r.id)}>确认删除</button>
+                          <button className="btn-ghost px-2 py-0.5 text-xs" onClick={() => setConfirmId(null)}>取消</button>
+                        </span>
+                      ) : (
+                        <button className="btn-ghost px-2 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                                onClick={() => setConfirmId(r.id)}>删除</button>
+                      )}
                     </td>
                   </tr>
                 ))}

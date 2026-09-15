@@ -103,4 +103,41 @@ test.describe("TradeSense E2E", () => {
     await amountCard.getByRole("button", { name: "采纳建议" }).click();
     await expect(page.getByText(/已处理 \(\d+\)/)).toBeVisible({ timeout: 15_000 });
   });
+
+
+  test("链路4：知识库引用 → 生成草稿 → 引用块与来源可见", async ({ page, request }) => {
+    const t = await apiToken(request);
+    await login(page);
+
+    // 建一个知识条目（标题带时间戳保证可搜）
+    const title = `E2E KB ${Date.now()}`;
+    const kb = await request.post(`${API_BASE}/knowledge`, {
+      headers: { Authorization: `Bearer ${t}` },
+      data: { title, content: "LFGB test reports are usually requested by German buyers for food-contact drinkware.", tags: "认证,LFGB" },
+    });
+    expect(kb.status()).toBe(201);
+    const kbId = (await kb.json()).id;
+
+    // 建一个简单询盘
+    const inq = await request.post(`${API_BASE}/inquiries`, {
+      headers: { Authorization: `Bearer ${t}` },
+      data: { text: "We need 500 ceramic mugs 350ml for a German gift shop, FOB Hamburg." },
+    });
+    const inqId = (await inq.json()).id;
+
+    // 打开询盘 → 回复标签 → 搜索并勾选知识条目 → 生成
+    await page.goto(`/inquiries/${inqId}`);
+    await page.getByRole("button", { name: /回复/ }).first().click();
+    const searchBox = page.getByPlaceholder(/搜索条目：LFGB/);
+    await expect(searchBox).toBeVisible({ timeout: 15_000 });
+    await searchBox.fill(title);
+    await page.getByRole("checkbox").first().check();
+    await page.getByRole("button", { name: /生成中英文草稿/ }).click();
+
+    // 正文出现知识库引用块，事实区标注 知识库#id，确认区提示人工核对
+    await expect(page.getByText(/Useful notes from our team knowledge base/).first())
+      .toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(new RegExp(`知识库#${kbId}`)).first()).toBeVisible();
+    await expect(page.getByText(/知识库内容已引用，请人工核对/)).toBeVisible();
+  });
 });

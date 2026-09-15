@@ -597,6 +597,7 @@ interface Draft {
   id: number; kind: string; tone: string; subject_en: string; body_en: string; body_zh: string;
   status: string; facts_used: { field: string; value: string }[]; needs_confirmation: string[];
 }
+interface KbPick { id: number; title: string; tags: string }
 const KINDS: [string, string][] = [
   ["first_reply", "首次回复"], ["ask_missing_info", "追问缺失信息"], ["product_recommend", "产品推荐"],
   ["sample", "样品沟通"], ["quote_send", "发送报价"], ["quote_follow_up", "报价后跟进"],
@@ -610,8 +611,19 @@ function Replies({ iid }: { iid: number }) {
   const [tone, setTone] = useState("friendly");
   const [openId, setOpenId] = useState<number | null>(null);
   const drafts = useQuery({ queryKey: ["replies", iid], queryFn: () => get<{ items: Draft[] }>(`/replies?inquiry_id=${iid}`) });
+  const [kbSel, setKbSel] = useState<number[]>([]);
+  const [kbQ, setKbQ] = useState("");
+  const kb = useQuery({
+    queryKey: ["knowledge", "pick", kbQ],
+    queryFn: () => get<{ items: KbPick[] }>(`/knowledge?q=${encodeURIComponent(kbQ)}`),
+  });
+  const toggleKb = (id: number) =>
+    setKbSel((sel) => (sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]));
   const gen = useMutation({
-    mutationFn: () => post<Draft>("/replies/generate", { kind, tone, extra: { inquiry_id: iid } }),
+    mutationFn: () => post<Draft>("/replies/generate", {
+      kind, tone,
+      extra: { inquiry_id: iid, ...(kbSel.length ? { knowledge_ids: kbSel } : {}) },
+    }),
     onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["replies", iid] }); setOpenId(d.id); },
   });
   const open = useQuery({
@@ -643,6 +655,27 @@ function Replies({ iid }: { iid: number }) {
               </button>
             ))}
           </div>
+          <label className="label mt-3">引用知识库（可选）</label>
+          <input className="input" placeholder="搜索条目：LFGB、付款、样品…" value={kbQ}
+                 onChange={(e) => setKbQ(e.target.value)} />
+          <div className="mt-1.5 max-h-32 space-y-0.5 overflow-auto rounded-lg border border-slate-100 p-1.5">
+            {kb.data?.items.map((k) => (
+              <label key={k.id} className="flex cursor-pointer items-start gap-2 rounded-md px-1.5 py-1 text-xs hover:bg-slate-50">
+                <input type="checkbox" className="mt-0.5" checked={kbSel.includes(k.id)}
+                       onChange={() => toggleKb(k.id)} />
+                <span>
+                  <span className="font-medium text-slate-600">{k.title}</span>
+                  {k.tags && <span className="ml-1 text-slate-400">· {k.tags}</span>}
+                </span>
+              </label>
+            ))}
+            {kb.data && !kb.data.items.length && (
+              <div className="px-1.5 py-2 text-xs text-slate-400">无匹配条目，可到「知识库」页新建</div>
+            )}
+          </div>
+          {kbSel.length > 0 && (
+            <p className="mt-1 text-[10px] text-slate-400">已选 {kbSel.length} 条，将以引用块附在正文后并标注来源</p>
+          )}
           <button className="btn-primary mt-4 w-full justify-center" disabled={gen.isPending} onClick={() => gen.mutate()}>
             {gen.isPending ? "生成中…" : "生成中英文草稿"}
           </button>
@@ -682,7 +715,9 @@ function Replies({ iid }: { iid: number }) {
                 <div className="mb-1 font-medium text-slate-500">使用的事实</div>
                 <ul className="space-y-0.5 text-slate-500">
                   {current.facts_used.map((f) => (
-                    <li key={f.field}>• {FIELD_LABELS[f.field] || f.field} = {f.value}</li>
+                    <li key={f.field}>• {f.field.startsWith("知识库#")
+                      ? `${f.field}：${f.value}`
+                      : `${FIELD_LABELS[f.field] || f.field} = ${f.value}`}</li>
                   ))}
                 </ul>
               </div>

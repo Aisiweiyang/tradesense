@@ -409,8 +409,12 @@ def _backfill_stage_events(db: Session, org_id: int) -> None:
     from ..models import FUNNEL_NEXT, InquiryStageEvent
 
     now = _utcnow()
+    done = set(db.scalars(select(InquiryStageEvent.inquiry_id).where(
+        InquiryStageEvent.org_id == org_id)).all())
     inquiries = db.scalars(select(Inquiry).where(Inquiry.org_id == org_id)).all()
     for inq in inquiries:
+        if inq.id in done:  # 已有事件的询盘不再重复回填
+            continue
         target = inq.stage or "new"
         chain = ["new"]
         if target in ("lost", "dormant"):
