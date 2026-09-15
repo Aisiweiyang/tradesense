@@ -24,6 +24,9 @@ Built for individuals and small teams starting out in foreign trade: product dat
 | 💰 Deterministic quoting | Computed from tier pricing + packaging/printing/logistics/insurance/duty; every line shows its data source. Internal cost / suggested / customer / approved prices are strictly separated — **human approval makes it formal** |
 | 🚢 Document workbench | Shipments, document upload & extraction (page-level evidence), cross-document consistency rules, exception queue, chase emails (see docs/18) |
 | 💼 Supplier comparison & quote sheets | Multi-supplier comparison ranking, merged quote sheet PDF export (internal cost never leaks), fixed four-role approval matrix (see docs/19) |
+| 📈 Sales funnel | Nine-stage funnel (new inquiry → won): reached, step conversion, median stage dwell time (right-censored), auto-recorded on create/quote/win (see docs/20) |
+| 📚 Knowledge base | Shared trade knowledge (certifications/compliance/practice); cite entries in reply drafts with provenance (see docs/20) |
+| 💱 Exchange rates | Manually maintained currency pairs (no external API); cross-currency quotes convert automatically and state the source (see docs/20) |
 | ✉️ Reply drafts | 10 scenarios × 3 tones, English body with Chinese parallel text, fact provenance and a human-confirmation checklist |
 | 🔔 Follow-up reminders | Due today, overdue, quoted-no-reply, long silence, high intent, incomplete data — every suggestion with its reason |
 | 🛡️ Safety boundaries | Org isolation, PBKDF2 passwords, audit log, upload limits, AI output whitelisting, never auto-send |
@@ -95,7 +98,7 @@ TradeSense (外贸询盘助手)/
 ├── frontend/                React 18 + TypeScript + Vite + Tailwind
 │   ├── src/pages/           19 pages (Chinese UI, English toggle)
 │   └── e2e/                 Playwright end-to-end flows
-├── docs/                    19 documents (Chinese; index below)
+├── docs/                    20 documents (Chinese; index below)
 │   └── phase1-screenshots/  UI acceptance screenshots
 ├── scripts/                 cross-cutting dev tools (start scripts, page capture)
 ├── logs/                    dev logs (runtime only, not committed)
@@ -104,7 +107,7 @@ TradeSense (外贸询盘助手)/
 
 ## 📖 Documentation
 
-Documentation is maintained in Chinese under [`docs/`](docs/) (19 files). Quick guide:
+Documentation is maintained in Chinese under [`docs/`](docs/) (20 files). Quick guide:
 
 | Document | Content |
 | --- | --- |
@@ -127,6 +130,7 @@ Documentation is maintained in Chinese under [`docs/`](docs/) (19 files). Quick 
 | [docs/17-优化日志.md](docs/17-优化日志.md) | Logged optimization rounds (problem → fix → verification) |
 | [docs/18-单证工作台.md](docs/18-单证工作台.md) | Shipments, document verification, exceptions, chase emails |
 | [docs/19-比价与报价单.md](docs/19-比价与报价单.md) | Supplier comparison, quote sheets, permission matrix |
+| [docs/20-漏斗与知识库.md](docs/20-漏斗与知识库.md) | Sales funnel, knowledge base, exchange-rate priority |
 
 ## 🔑 Design principles (as implemented)
 
