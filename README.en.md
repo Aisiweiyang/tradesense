@@ -120,7 +120,7 @@ TradeSense (外贸询盘助手)/
 ├── frontend/                React 18 + TypeScript + Vite + Tailwind
 │   ├── src/pages/           19 pages (Chinese UI, English toggle)
 │   └── e2e/                 Playwright end-to-end flows
-├── docs/                    20 documents (Chinese; index below)
+├── docs/                    21 documents (Chinese; index below)
 │   └── phase1-screenshots/  UI acceptance screenshots
 ├── scripts/                 cross-cutting dev tools (start scripts, page capture)
 ├── logs/                    dev logs (runtime only, not committed)
@@ -153,6 +153,7 @@ Documentation is maintained in Chinese under [`docs/`](docs/) (20 files). Quick 
 | [docs/18-单证工作台.md](docs/18-单证工作台.md) | Shipments, document verification, exceptions, chase emails |
 | [docs/19-比价与报价单.md](docs/19-比价与报价单.md) | Supplier comparison, quote sheets, permission matrix |
 | [docs/20-漏斗与知识库.md](docs/20-漏斗与知识库.md) | Sales funnel, knowledge base, exchange-rate priority |
+| [docs/21-使用手册.md](docs/21-使用手册.md) | Full user manual: daily workflow, permissions, FAQ |
 
 ## 🔑 Design principles (as implemented)
 

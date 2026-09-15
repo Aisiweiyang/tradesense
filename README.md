@@ -113,7 +113,7 @@ cd frontend && npx playwright test                 # 4 条浏览器 E2E 链路�
 ├── frontend/                React 18 + TypeScript + Vite + Tailwind
 │   ├── src/pages/           19 个页面（中文界面，可切英文）
 │   └── e2e/                 Playwright 浏览器端到端测试
-├── docs/                    20 篇文档（快速开始/算法/接入/单证工作台/比价/漏斗与知识库/限制/交付报告）
+├── docs/                    21 篇文档（快速开始/使用手册/算法/接入/单证工作台/比价/漏斗与知识库/限制/交付报告）
 │   └── phase1-screenshots/  第一阶段界面验收截图
 ├── scripts/                 跨端开发工具（一键启动、页面截图）
 ├── logs/                    开发日志（运行时产生，不入库）
@@ -143,6 +143,7 @@ cd frontend && npx playwright test                 # 4 条浏览器 E2E 链路�
 | [docs/18-单证工作台.md](docs/18-单证工作台.md) | 货件、单证核验、异常队列、催补邮件 |
 | [docs/19-比价与报价单.md](docs/19-比价与报价单.md) | 供应商比价、合并报价单、权限矩阵 |
 | [docs/20-漏斗与知识库.md](docs/20-漏斗与知识库.md) | 销售漏斗口径、知识库用法、汇率优先级 |
+| [docs/21-使用手册.md](docs/21-使用手册.md) | 使用者的完整操作手册：日常流程/权限/FAQ |
 
 ## 🔑 设计原则（与实现一致）
 
