@@ -20,9 +20,9 @@ if [ ! -d frontend/node_modules ]; then
   (cd frontend && npm install --no-audit --no-fund)
 fi
 
-echo "Starting backend :8000 and frontend :5173 (demo: demo@tradesense-demo.cn / demo1234)"
+echo "Starting backend :8001 and frontend :5173 (demo: demo@tradesense-demo.cn / demo1234)"
 mkdir -p logs
-(cd backend && "$PY" -m uvicorn app.main:app --port 8000 > ../logs/backend.log 2>&1) &
+(cd backend && "$PY" -m uvicorn app.main:app --port 8001 > ../logs/backend.log 2>&1) &
 BACK=$!
 (cd frontend && npm run dev > ../logs/frontend.log 2>&1) &
 FRONT=$!

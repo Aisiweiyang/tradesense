@@ -4,7 +4,7 @@ rem  TradeSense one-click dev start (Windows)
 rem  - creates Python venv if missing
 rem  - installs dependencies if missing
 rem  - initializes DB (alembic + demo seed)
-rem  - starts backend :8000 and frontend :5173
+rem  - starts backend :8001 and frontend :5173
 rem ============================================================
 setlocal
 chcp 65001 >nul
@@ -31,13 +31,13 @@ if not exist "frontend\node_modules" (
 
 echo.
 echo ================================================
-echo   Starting backend  http://127.0.0.1:8000
+echo   Starting backend  http://127.0.0.1:8001
 echo   Starting frontend http://127.0.0.1:5173
 echo   Demo login: demo@tradesense-demo.cn / demo1234
 echo   Close the two windows to stop.
 echo ================================================
 if not exist logs mkdir logs
-start "TradeSense Backend" cmd /k "cd /d %~dp0..\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --port 8000 > ..\logs\backend.log 2>&1"
+start "TradeSense Backend" cmd /k "cd /d %~dp0..\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --port 8001 > ..\logs\backend.log 2>&1"
 timeout /t 3 /nobreak >nul
 start "TradeSense Frontend" cmd /k "cd /d %~dp0..\frontend && npm run dev > ..\logs\frontend.log 2>&1"
 timeout /t 6 /nobreak >nul

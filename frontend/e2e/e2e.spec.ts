@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 const TOKEN = process.env.E2E_TOKEN ?? "";
+const API_BASE = process.env.E2E_API_BASE ?? "http://127.0.0.1:8001/api";
 
 export async function login(page: Page) {
   // inject token before app boots (localhost-only #token / localStorage)
@@ -9,7 +10,7 @@ export async function login(page: Page) {
 }
 
 export async function apiToken(request: import("@playwright/test").APIRequestContext): Promise<string> {
-  const r = await request.post("http://127.0.0.1:8000/api/auth/login", {
+  const r = await request.post(`${API_BASE}/auth/login`, {
     data: { email: "demo@tradesense-demo.cn", password: "demo1234" },
   });
   const body = await r.json();
@@ -67,7 +68,7 @@ test.describe("TradeSense E2E", () => {
   test("链路3：货件上传单证 → 发现冲突 → 采纳 → 数量更新", async ({ page, request }) => {
     const t = await apiToken(request);
     // API 建货件（UI 亦可，这里确保确定性）
-    const r = await request.post("http://127.0.0.1:8000/api/shipments", {
+    const r = await request.post(`${API_BASE}/shipments`, {
       headers: { Authorization: `Bearer ${t}` },
       data: { order_no: "E2E-SH-1", port_of_loading: "Ningbo",
               port_of_discharge: "Hamburg", required_docs: ["invoice", "packing_list", "bill_of_lading"] },
@@ -81,7 +82,7 @@ test.describe("TradeSense E2E", () => {
 
     // 上传两份冲突单证（API 注入；UI 隐藏 file input 与 Playwright 的兼容问题见已知限制）
     for (const [fname, mime] of [["invoice.pdf", "application/pdf"], ["lc.pdf", "application/pdf"]] as const) {
-      const up = await request.post(`http://127.0.0.1:8000/api/shipments/${shipmentId}/documents`, {
+      const up = await request.post(`${API_BASE}/shipments/${shipmentId}/documents`, {
         headers: { Authorization: `Bearer ${t}` },
         multipart: { file: { name: fname, mimeType: mime,
                              buffer: fs.readFileSync(`e2e/fixtures/${fname}`) } },

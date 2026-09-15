@@ -34,7 +34,7 @@ start_dev.bat
 脚本会自动：创建 Python venv → 安装依赖 → 初始化数据库（Alembic 迁移 + 演示数据）→ 启动前后端 → 打开浏览器。
 
 - 前端：http://127.0.0.1:5173
-- 后端 API：http://127.0.0.1:8000 ｜ OpenAPI 文档：http://127.0.0.1:8000/docs
+- 后端 API：http://127.0.0.1:8001 ｜ OpenAPI 文档：http://127.0.0.1:8001/docs
 - **演示账号：`demo@tradesense-demo.cn` / `demo1234`**
 
 macOS/Linux：`bash scripts/start_dev.sh`
@@ -46,7 +46,7 @@ macOS/Linux：`bash scripts/start_dev.sh`
 cd backend
 python -m venv .venv && .venv/Scripts/pip install -r requirements.txt   # Windows
 .venv/Scripts/python scripts/init_db.py     # 迁移 + 演示数据
-.venv/Scripts/python -m uvicorn app.main:app --port 8000
+.venv/Scripts/python -m uvicorn app.main:app --port 8001
 
 # 前端（新开终端）
 cd frontend

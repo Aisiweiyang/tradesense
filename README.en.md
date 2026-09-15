@@ -41,7 +41,7 @@ bash scripts/start_dev.sh
 The script automatically: creates a Python venv → installs dependencies → initializes the database (Alembic migration + demo data) → starts backend & frontend → opens the browser.
 
 - Frontend: http://127.0.0.1:5173
-- Backend API: http://127.0.0.1:8000 ｜ OpenAPI docs: http://127.0.0.1:8000/docs
+- Backend API: http://127.0.0.1:8001 ｜ OpenAPI docs: http://127.0.0.1:8001/docs
 - **Demo accounts**: `demo@tradesense-demo.cn` / `demo1234` (owner) · `member@tradesense-demo.cn` / `demo1234` (member, limited approvals)
 
 ### Manual setup
@@ -52,7 +52,7 @@ cd backend
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt        # Windows
 .venv/Scripts/python scripts/init_db.py              # migration + demo data
-.venv/Scripts/python -m uvicorn app.main:app --port 8000
+.venv/Scripts/python -m uvicorn app.main:app --port 8001
 
 # Frontend (new terminal)
 cd frontend

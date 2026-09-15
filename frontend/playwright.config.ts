@@ -8,5 +8,5 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:5173",
     headless: true,
   },
-  // Services are expected to be running (start_dev.bat) — backend :8000, frontend :5173
+  // Services are expected to be running (start_dev.bat) — backend :8001, frontend :5173
 });

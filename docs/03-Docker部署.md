@@ -5,7 +5,7 @@
 ```bash
 docker compose up --build -d
 # 前端(nginx) http://localhost:5173 → /api 反代到 backend:8000
-# 后端 API    http://localhost:8000/docs
+# 后端 API    http://localhost:8001/docs
 ```
 
 - 后端镜像基于 `python:3.13-slim`，启动时自动执行迁移 + 演示数据种子；

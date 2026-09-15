@@ -28,6 +28,9 @@ MATRIX: dict[str, str] = {
     "supplier.write": "manager",
     "import.run": "member",
     "connector.manage": "manager",
+    "review_package.export": "manager",
+    "fx.manage": "manager",
+    "knowledge.write": "member",
     "settings.manage": "owner",
     "user.manage": "owner",
 }

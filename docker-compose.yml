@@ -13,7 +13,7 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       # IMAP_PASSWORD / WHATSAPP_TOKEN / ... pass through as needed
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8001:8000"
     volumes:
       - backend_data:/data
     restart: unless-stopped

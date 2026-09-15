@@ -12,6 +12,7 @@ from ...database import get_db
 from ...deps import OrgScope, get_scope, order_by, paginate
 from ...models import (AuditEvent, Customer, Document, DocumentField,
                        DocumentFieldChange, ReplyDraft, Shipment, ShipmentIssue, User)
+from ...rbac import require_role
 from ...schemas import ORMModel
 from ...services.audit import audit
 from ...services.doc_rules import RULE_LABELS, refresh_issues, rule_enabled
@@ -347,6 +348,24 @@ def set_field(field_id: int, body: dict, scope: OrgScope = Depends(get_scope),
           {"field": f.field_name})
     db.commit()
     return {"id": f.id, "value": f.value, "source": f.source}
+
+
+@router.get("/{shipment_id}/review-package")
+def download_review_package(shipment_id: int,
+                            scope: OrgScope = Depends(require_role("review_package.export")),
+                            db: Session = Depends(get_db)):
+    """复核包：全部单证最新版 PDF + 中文核验报告 + manifest（sha256）。manager+。"""
+    from fastapi.responses import Response
+
+    from ...services.review_package import build_review_package
+
+    s = _shipment(db, scope, shipment_id)
+    data, filename = build_review_package(db, scope.org_id, s, scope.user.name)
+    audit(db, scope.org_id, scope.user.id, "review_package.export", "shipment", s.id,
+          {"shipment_no": s.shipment_no, "documents": len(s.documents)})
+    db.commit()
+    return Response(content=data, media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 @router.post("/{shipment_id}/recheck")

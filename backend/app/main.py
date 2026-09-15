@@ -1,6 +1,6 @@
 """TradeSense FastAPI application entry point.
 
-Run:  uvicorn app.main:app --reload --port 8000
+Run:  uvicorn app.main:app --reload --port 8001
 """
 from __future__ import annotations
 
