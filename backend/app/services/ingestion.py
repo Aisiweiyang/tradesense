@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import (AuditEvent, Contact, ConversationMessage, ConversationThread,
+                      InquiryStageEvent,
                       Customer, ExternalMessage, Inquiry)
 from ..config import settings
 from . import followup as followup_svc
@@ -133,6 +134,10 @@ def ingest_external_message(db: Session, org_id: int, account, payload: dict) ->
         quality_flag="low_quality" if _is_low_quality(text) else "normal",
     )
     db.add(inquiry)
+    db.flush()
+    # 渠道进来的询盘也写首个阶段事件，漏斗触达统计与手动创建口径一致
+    db.add(InquiryStageEvent(org_id=org_id, inquiry_id=inquiry.id,
+                             from_stage="", to_stage="new"))
     db.flush()
 
     thread = db.scalar(select(ConversationThread).where(

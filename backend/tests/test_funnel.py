@@ -138,3 +138,41 @@ def test_create_and_status_write_events(client, db):
     client.post(f"/api/inquiries/{inq_id}/status", json={"status": "lost"}, headers=headers)
     db.expire_all()
     assert db.get(Inquiry, inq_id).stage == "lost"
+
+
+def test_status_rejects_invalid_stage(client):
+    """传了不存在的阶段：422 明确拒绝，不静默吞掉。"""
+    headers = auth_headers(client)
+    inq = client.post("/api/inquiries", json={"text": "Quote 500 bottles FOB"},
+                      headers=headers).json()
+    r = client.post(f"/api/inquiries/{inq['id']}/status",
+                    json={"stage": "frobnicating"}, headers=headers)
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "invalid_stage"
+
+
+def test_ingested_inquiry_gets_first_event(db, org):
+    """渠道进来的询盘也写首个阶段事件，漏斗触达与手动创建口径一致。"""
+    from app.models import ConnectorAccount
+    from app.services.ingestion import ingest_external_message
+
+    acct = ConnectorAccount(org_id=org.id, connector_type="generic_webhook",
+                            name="test webhook", mode="live", status="connected",
+                            auth_state="authorized", config_json="{}")
+    db.add(acct)
+    db.flush()
+    res = ingest_external_message(db, org.id, acct, {
+        "external_message_id": "evt-1",
+        "thread_external_id": "wh:new-lead",
+        "sender": "lead@example.com",
+        "text": "Subject: New inquiry\n\nWe need 500 vacuum bottles, FOB.",
+        "raw_json": {},
+    })
+    assert res["duplicate"] is False
+    inq_id = int(res["inquiry_id"]) if "inquiry_id" in res else None
+    if inq_id is None:
+        from app.models import Inquiry
+        inq_id = db.query(Inquiry).filter_by(org_id=org.id).order_by(
+            Inquiry.id.desc()).first().id
+    evts = db.query(InquiryStageEvent).filter_by(inquiry_id=inq_id).all()
+    assert [(e.from_stage, e.to_stage) for e in evts] == [("", "new")]

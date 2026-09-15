@@ -256,3 +256,21 @@ def test_seed_inventory(seeded):
     assert seeded.scalar(select(func.count(ReplyDraft.id)).where(ReplyDraft.org_id == org_id)) >= 4
     assert seeded.scalar(select(func.count(ConnectorAccount.id)).where(ConnectorAccount.org_id == org_id)) == 4
     assert seeded.scalar(select(func.count(SyncLog.id)).where(SyncLog.org_id == org_id)) >= 4
+
+
+def test_seed_has_won_inquiry_with_full_chain(seeded):
+    """S16 已成交：漏斗终点有数据，且阶段事件从 new 一路到 won。"""
+    from sqlalchemy import select
+
+    from app.models import Inquiry, InquiryStageEvent
+
+    org_id = _org(seeded).id
+    won = seeded.scalars(select(Inquiry).where(
+        Inquiry.org_id == org_id, Inquiry.stage == "won")).all()
+    assert len(won) == 1
+    evts = seeded.scalars(select(InquiryStageEvent).where(
+        InquiryStageEvent.inquiry_id == won[0].id
+    ).order_by(InquiryStageEvent.id)).all()
+    assert [e.to_stage for e in evts] == ["new", "qualified", "clarifying",
+                                          "quoted", "sample", "negotiating", "won"]
+    assert evts[0].from_stage == ""

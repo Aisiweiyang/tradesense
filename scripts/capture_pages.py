@@ -1,4 +1,5 @@
 """Capture TradeSense pages with headless Edge (visual inspection)."""
+import os
 import subprocess
 import sys
 import time
@@ -9,7 +10,9 @@ import httpx
 BASE = Path(__file__).resolve().parent.parent
 SHOTS = BASE / "docs" / "phase1-screenshots"
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-API = "http://127.0.0.1:8001/api"
+BACKEND_PORT = os.environ.get("TRADESENSE_BACKEND_PORT", "8001")
+FRONTEND_PORT = os.environ.get("TRADESENSE_FRONTEND_PORT", "5173")
+API = f"http://127.0.0.1:{BACKEND_PORT}/api"
 
 
 def token() -> str:
@@ -25,7 +28,7 @@ def find_inquiry(t: str, q: str) -> int:
 
 def capture(tk: str, name: str, path: str) -> None:
     out = SHOTS / f"{name}.png"
-    url = f"http://127.0.0.1:5173/#token={tk}&next={path}"
+    url = f"http://127.0.0.1:{FRONTEND_PORT}/#token={tk}&next={path}"
     cmd = [
         EDGE, "--headless=new", "--disable-gpu",
         f"--user-data-dir=C:\\Users\\Asus\\AppData\\Local\\Temp\\edge-hl-{name}",

@@ -336,9 +336,14 @@ def set_status(inquiry_id: int, body: dict, scope: OrgScope = Depends(get_scope)
         inq.quality_flag = body["quality_flag"]
     old_stage = inq.stage or "new"
     new_stage = body.get("stage") or ""
+    # 传了 stage 但不在九阶段里：明确拒绝，不静默吞掉
+    if new_stage and new_stage not in FUNNEL_STAGES:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail={
+            "code": "invalid_stage",
+            "message": f"非法阶段 {new_stage}，可选值：{'/'.join(FUNNEL_STAGES)}"})
     if not new_stage and inq.status in ("won", "lost"):
         new_stage = inq.status  # 终态状态同步漏斗阶段
-    if new_stage and new_stage in FUNNEL_STAGES and new_stage != old_stage:
+    if new_stage and new_stage != old_stage:
         inq.stage = new_stage
         db.add(InquiryStageEvent(org_id=scope.org_id, inquiry_id=inq.id,
                                  from_stage=old_stage, to_stage=new_stage,
