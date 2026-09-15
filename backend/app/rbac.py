@@ -30,6 +30,7 @@ MATRIX: dict[str, str] = {
     "connector.manage": "manager",
     "review_package.export": "manager",
     "fx.manage": "manager",
+    "knowledge.read": "viewer",
     "knowledge.write": "member",
     "settings.manage": "owner",
     "user.manage": "owner",

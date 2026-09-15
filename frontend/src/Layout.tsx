@@ -24,6 +24,7 @@ const NAV = [
   ["/connectors", "nav_connectors", "🔌"],
   ["/sync-logs", "nav_synclogs", "🧾"],
   ["/glossary", "nav_glossary", "📖"],
+  ["/knowledge", "nav_knowledge", "📚"],
   ["/audit", "nav_audit", "🛡️"],
   ["/settings", "nav_settings", "⚙️"],
 ] as const;

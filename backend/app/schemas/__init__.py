@@ -454,3 +454,20 @@ class SupplierOut(SupplierIn, ORMModel):
 
 
 TokenOut.model_rebuild()
+
+
+# ------------------------------------------------------------------ knowledge
+class KnowledgeIn(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    content: str = ""
+    tags: str = ""  # 逗号分隔，如 "欧盟,认证,LFGB"
+
+
+class KnowledgeOut(ORMModel):
+    id: int
+    title: str
+    content: str
+    tags: str
+
+
+TokenOut.model_rebuild()

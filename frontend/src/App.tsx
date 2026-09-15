@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import Audit from "./pages/Audit";
 import Analytics from "./pages/Analytics";
 import Glossary from "./pages/Glossary";
+import Knowledge from "./pages/Knowledge";
 
 export default function App() {
   const [ready] = useState(true);
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/audit" element={<Audit />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/glossary" element={<Glossary />} />
+        <Route path="/knowledge" element={<Knowledge />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

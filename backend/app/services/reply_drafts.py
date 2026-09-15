@@ -369,5 +369,6 @@ def generate_draft(kind: str, tone: str, variables: dict, values: dict) -> dict:
         "kind": kind, "tone": tone, "subject_en": subject.format(**variables),
         "body_en": body_en, "body_zh": body_zh,
         "variables": variables, "facts_used": facts,
-        "needs_confirmation": NEEDS_CONFIRMATION.get(kind, []),
+        # 副本：调用方会往里追加确认项，不能污染 NEEDS_CONFIRMATION 全局表
+        "needs_confirmation": list(NEEDS_CONFIRMATION.get(kind, [])),
     }

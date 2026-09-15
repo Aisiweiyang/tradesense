@@ -17,8 +17,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import (Contact, ConversationThread, Customer, FollowUpTask, Inquiry,
-                      Organization, Product, Quote, ReplyDraft, Role, Supplier,
-                      SupplierProduct, User, ConnectorAccount, SyncLog, SyncCursor)
+                      KnowledgeDocument, Organization, Product, Quote, ReplyDraft, Role,
+                      Supplier, SupplierProduct, User, ConnectorAccount, SyncLog, SyncCursor)
 from ..security import hash_password
 from ..services.audit import audit
 from ..services.imports import _parse_tiers
@@ -350,10 +350,48 @@ def seed_demo(db: Session) -> None:
     from .shipments_seed import seed_shipments
     seed_shipments(db, org.id, user.id)
 
+    # ------------------------------------------------- 知识库（第六阶段演示）
+    _seed_knowledge(db, org.id)
+
     # ------------------------------------------------- 漏斗阶段事件回填（第六阶段演示）
     _backfill_stage_events(db, org.id)
 
     audit(db, org.id, user.id, "demo.seed", "organization", org.id, {"products": len(PRODUCTS)})
+
+
+KNOWLEDGE_SEED = [
+    ("欧盟食品接触：LFGB 与 EC 1935/2004",
+     "German buyers usually ask for LFGB test reports on food-contact products "
+     "(bottles, mugs, containers). The EU-wide framework is EC 1935/2004; LFGB is the "
+     "stricter German rule and carries more weight with German retail. The knife-and-fork "
+     "symbol marks food-safe material.", "欧盟,认证,LFGB,食品接触"),
+    ("木包装出口需 IPPC 熏蒸标识",
+     "Solid wood packaging (crates, pallets) shipped to EU/US/CA/AU must be heat treated "
+     "or fumigated and stamped with the IPPC mark; plywood (PLY) is exempt. Confirm the "
+     "packaging material before quoting FOB with wooden cases.", "包装,IPPC,木箱,熏蒸"),
+    ("美国市场 FDA 与 CA Prop 65",
+     "US food-contact products need FDA compliance. California Prop 65 may require warning "
+     "labels for certain materials, e.g. lead/cadmium in ceramic glaze. Ask the buyer "
+     "whether retail packaging needs the Prop 65 warning.", "美国,认证,FDA,Prop65"),
+    ("样品与快递运费惯例",
+     "Existing models: 1-2 pcs free, courier collected. Custom samples may carry a "
+     "sampling fee, refundable after order confirmation. DHL/FedEx under 500g to EU/US "
+     "runs about 25-40 USD.", "样品,运费,快递"),
+    ("付款方式风险梯度",
+     "T/T 30% deposit / 70% against B/L copy is the default for new customers. L/C at "
+     "sight is acceptable above 30k USD once bank charges are clarified. Avoid full "
+     "payment before production on large orders; offer O/A only with credit insurance.",
+     "付款,TT,信用证,风险"),
+]
+
+
+def _seed_knowledge(db: Session, org_id: int) -> None:
+    if db.scalar(select(func.count(KnowledgeDocument.id)).where(
+            KnowledgeDocument.org_id == org_id)):
+        return
+    for title, content, tags in KNOWLEDGE_SEED:
+        db.add(KnowledgeDocument(org_id=org_id, title=title, content=content, tags=tags))
+    db.flush()
 
 
 def _backfill_stage_events(db: Session, org_id: int) -> None:

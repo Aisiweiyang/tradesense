@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from ...database import get_db
 from ...deps import OrgScope, get_scope
-from ...models import Customer, Inquiry, ReplyDraft
+from ...models import Customer, Inquiry, KnowledgeDocument, ReplyDraft
 from ...schemas import ReplyGenerateIn, ReplyOut, ReplyUpdateIn
 from ...services.ai import ai_polish_reply
 from ...services.audit import audit
@@ -69,6 +69,37 @@ def generate(body: ReplyGenerateIn, scope: OrgScope = Depends(get_scope),
         draft_data["variables"]["ai_polished"] = True
         draft_data["body_en"] = polished
         draft_data["needs_confirmation"].append("正文经过 AI 润色，请人工核对事实未被改动")
+
+    # 知识库引用（可选）：extra.knowledge_ids 指定条目，按 org 取，摘录以引用块进正文；
+    # 未指定时行为与原来完全一致。放在 AI 润色之后追加，引用内容不会被润色改写。
+    raw_ids = body.extra.get("knowledge_ids") or []
+    kb_entries = []
+    if isinstance(raw_ids, list) and raw_ids:
+        wanted = []
+        for rid in raw_ids:
+            try:
+                wanted.append(int(rid))
+            except (TypeError, ValueError):
+                continue
+        if wanted:
+            rows = db.scalars(select(KnowledgeDocument).where(
+                KnowledgeDocument.org_id == scope.org_id,
+                KnowledgeDocument.id.in_(wanted))).all()
+            by_id = {k.id: k for k in rows}
+            kb_entries = [by_id[i] for i in dict.fromkeys(wanted) if i in by_id]
+    if kb_entries:
+        quotes = []
+        for k in kb_entries:
+            excerpt = " ".join(k.content.split())
+            if len(excerpt) > 220:
+                excerpt = excerpt[:220].rstrip() + "…"
+            quotes.append(f"> {k.title}: {excerpt}")
+        draft_data["body_en"] += ("\n\nUseful notes from our team knowledge base, please double-check "
+                                  "before sending:\n\n" + "\n>\n".join(quotes))
+        draft_data["facts_used"].extend(
+            {"field": f"知识库#{k.id}", "value": k.title, "source_message_id": None}
+            for k in kb_entries)
+        draft_data["needs_confirmation"].append("知识库内容已引用，请人工核对")
 
     draft = ReplyDraft(
         org_id=scope.org_id, inquiry_id=inq.id, kind=body.kind, tone=body.tone,
