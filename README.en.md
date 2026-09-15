@@ -44,6 +44,8 @@ The script automatically: creates a Python venv → installs dependencies → in
 - Backend API: http://127.0.0.1:8001 ｜ OpenAPI docs: http://127.0.0.1:8001/docs
 - **Demo accounts**: `demo@tradesense-demo.cn` / `demo1234` (owner) · `member@tradesense-demo.cn` / `demo1234` (member, limited approvals)
 
+To use different ports, set `TRADESENSE_BACKEND_PORT` and `TRADESENSE_FRONTEND_PORT` before starting. The Vite proxy follows the backend port automatically, so no source edit is required.
+
 ### Manual setup
 
 ```bash

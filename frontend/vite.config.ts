@@ -1,6 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const backendPort = Number.parseInt(process.env.TRADESENSE_BACKEND_PORT ?? "8001", 10);
+const frontendPort = Number.parseInt(process.env.TRADESENSE_FRONTEND_PORT ?? "5173", 10);
+const backendTarget = process.env.VITE_BACKEND_TARGET ?? `http://127.0.0.1:${backendPort}`;
+
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -15,10 +19,12 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    host: "127.0.0.1",
+    port: frontendPort,
+    strictPort: true,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8001",
+        target: backendTarget,
         changeOrigin: true,
       },
     },
@@ -27,7 +33,7 @@ export default defineConfig({
     port: 4173,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8001",
+        target: backendTarget,
         changeOrigin: true,
       },
     },

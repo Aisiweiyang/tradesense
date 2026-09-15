@@ -39,6 +39,8 @@ start_dev.bat
 
 macOS/Linux：`bash scripts/start_dev.sh`
 
+如需换端口，在启动前设置 `TRADESENSE_BACKEND_PORT` 和 `TRADESENSE_FRONTEND_PORT`；Vite 代理会自动跟随后端端口，无需修改源码。
+
 ### 手动启动
 
 ```bash

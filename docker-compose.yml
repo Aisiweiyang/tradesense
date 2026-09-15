@@ -1,5 +1,7 @@
 # TradeSense — full stack via Docker Compose.
 # SQLite by default; uncomment the postgres service + DATABASE_URL for production.
+name: tradesense
+
 services:
   backend:
     build: ./backend
@@ -13,18 +15,31 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       # IMAP_PASSWORD / WHATSAPP_TOKEN / ... pass through as needed
     ports:
-      - "127.0.0.1:8001:8000"
+      - "127.0.0.1:${TRADESENSE_BACKEND_PORT:-8001}:8000"
     volumes:
       - backend_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
   frontend:
     build: ./frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "5173:80"
+      - "127.0.0.1:${TRADESENSE_FRONTEND_PORT:-5173}:80"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
 
   # ---- Optional: PostgreSQL for production mode ----
   # db:
