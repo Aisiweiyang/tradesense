@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base, OrgMixin, TZDateTime, TimestampMixin
+from .base import Base, OrgMixin, TZDateTime, TimestampMixin, utcnow
 
 SHIPMENT_STATUSES = [
     "preparing", "docs_making", "ready_to_ship", "shipped",
@@ -96,6 +96,23 @@ class DocumentField(Base, OrgMixin, TimestampMixin):
     modified_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     document: Mapped[Document] = relationship(back_populates="fields")
+
+
+class DocumentFieldChange(Base, OrgMixin, TimestampMixin):
+    """Field-level diff between two consecutive versions of the same doc_type."""
+    __tablename__ = "document_field_changes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"), index=True)  # 新版本
+    prev_document_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("documents.id"), nullable=True)
+    shipment_id: Mapped[int] = mapped_column(ForeignKey("shipments.id"), index=True)
+    field_name: Mapped[str] = mapped_column(String(60), index=True)
+    old_value: Mapped[str] = mapped_column(Text, default="")
+    new_value: Mapped[str] = mapped_column(Text, default="")
+    change_type: Mapped[str] = mapped_column(String(10), default="changed")  # changed/added/removed
+    prev_version: Mapped[int] = mapped_column(default=0)   # 来源版本（0=无上一版）
+    changed_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow)
 
 
 class ShipmentIssue(Base, OrgMixin, TimestampMixin):

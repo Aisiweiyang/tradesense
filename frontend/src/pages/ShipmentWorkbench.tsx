@@ -15,8 +15,12 @@ interface DocRow {
   original_filename: string; pages: number; has_text_layer: boolean; extract_error: string;
 }
 interface FieldRow {
-  id: number; doc_type: string; field_name: string; value: string;
+  id: number; document_id: number; doc_type: string; field_name: string; value: string;
   confidence: number; evidence_page: number | null; evidence_text: string; source: string;
+}
+interface FieldChange {
+  id: number; document_id: number; field_name: string;
+  old_value: string; new_value: string; change_type: string; prev_version: number;
 }
 interface ShipmentRow {
   id: number; shipment_no: string; order_no: string; transport_mode: string;
@@ -292,6 +296,7 @@ function IssuesTab({ detail, onChanged }: { detail: Detail; onChanged: () => voi
 function DocsTab({ detail, onChanged }: { detail: Detail; onChanged: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<{ id: number; page: number } | null>(null);
+  const [diffDocId, setDiffDocId] = useState<number | null>(null);
   const upload = useMutation({
     mutationFn: (file: File) => {
       const fd = new FormData();
@@ -335,7 +340,13 @@ function DocsTab({ detail, onChanged }: { detail: Detail; onChanged: () => void 
             <tr key={d.id}>
               <td>{DOC_LABEL[d.doc_type] || d.doc_type}</td>
               <td className="font-mono">{d.original_filename}</td>
-              <td>v{d.version}</td>
+              <td>
+                <button data-testid={`ver-${d.id}`} className="text-brand-600 underline decoration-dotted hover:text-brand-700"
+                        onClick={() => setDiffDocId(diffDocId === d.id ? null : d.id)}
+                        title="点击查看与上一版本的差异">
+                  v{d.version}
+                </button>
+              </td>
               <td>{d.pages}</td>
               <td>
                 <Badge value={d.status === "failed" ? "failed" : d.status === "needs_manual" ? "needs_confirmation" : "active"}
@@ -351,6 +362,50 @@ function DocsTab({ detail, onChanged }: { detail: Detail; onChanged: () => void 
           {!detail.documents.length && <tr><td colSpan={6}><EmptyState icon="📄" text="还没有上传单证" /></td></tr>}
         </tbody>
       </table>
+      {diffDocId !== null && <VersionDiffPanel docId={diffDocId} onClose={() => setDiffDocId(null)} />}
+    </div>
+  );
+}
+
+function VersionDiffPanel({ docId, onClose }: { docId: number; onClose: () => void }) {
+  const diff = useQuery({
+    queryKey: ["doc-diff", docId],
+    queryFn: () => get<{ document_id: number; doc_type: string; version: number;
+                         prev_version: number | null; items: FieldChange[] }>(
+      `/shipments/documents/${docId}/diff`),
+  });
+  return (
+    <div data-testid="version-diff" className="mt-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+      <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
+        <span>
+          版本差异
+          {diff.data ? <>：{DOC_LABEL[diff.data.doc_type] || diff.data.doc_type}
+            {diff.data.prev_version ? ` v${diff.data.prev_version} → v${diff.data.version}` : `（v${diff.data.version} 为首个版本）`}
+          </> : ""}
+        </span>
+        <button className="text-brand-500" onClick={onClose}>关闭</button>
+      </div>
+      {diff.isLoading ? <Loading /> : diff.error ? <ErrorState message={(diff.error as Error).message} onRetry={diff.refetch} /> :
+        !diff.data!.items.length ? <div className="py-3 text-center text-xs text-slate-400">
+          {diff.data!.prev_version ? "与上一版本无字段差异" : "这是该类型的第一版，没有可对比的版本"}
+        </div> : (
+          <table className="table-base text-xs" data-testid="diff-table">
+            <thead><tr><th>字段</th><th>类型</th><th>旧值（来源版本）</th><th>新值</th></tr></thead>
+            <tbody>
+              {diff.data!.items.map((c) => (
+                <tr key={c.id} className={c.change_type === "changed" ? "bg-amber-50/70" : ""}>
+                  <td className="font-medium text-slate-600">{c.field_name}</td>
+                  <td>
+                    <Badge value={c.change_type === "changed" ? "pending" : c.change_type === "added" ? "active" : "failed"}
+                           text={c.change_type === "changed" ? "变更" : c.change_type === "added" ? "新增" : "移除"} />
+                  </td>
+                  <td className="font-mono text-slate-400">{c.old_value || "—"}<span className="ml-1 text-[10px]">v{c.prev_version}</span></td>
+                  <td className="font-mono text-slate-700">{c.new_value || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
     </div>
   );
 }
@@ -360,6 +415,21 @@ function FieldsTab({ detail, onChanged }: { detail: Detail; onChanged: () => voi
     queryKey: ["shipment-fields", detail.id],
     queryFn: () => get<{ items: FieldRow[] }>(`/shipments/${detail.id}/fields`),
   });
+  // 版本差异高亮：有变更记录的 (文档, 字段) 标黄并在悬浮提示中显示旧值
+  const changes = useQuery({
+    queryKey: ["shipment-field-changes", detail.id],
+    queryFn: () => get<{ items: FieldChange[] }>(`/shipments/${detail.id}/field-changes`),
+  });
+  const changedMap = useMemo(() => {
+    const m = new Map<string, FieldChange>();
+    for (const c of changes.data?.items || []) {
+      const key = `${c.document_id}:${c.field_name}`;
+      const prev = m.get(key);
+      // 同一字段多轮变更时，保留最新一条（id 更大）
+      if (!prev || c.id > prev.id) m.set(key, c);
+    }
+    return m;
+  }, [changes.data]);
   const [editing, setEditing] = useState<number | null>(null);
   const [value, setValue] = useState("");
   const save = useMutation({
@@ -379,9 +449,15 @@ function FieldsTab({ detail, onChanged }: { detail: Detail; onChanged: () => voi
         <thead><tr><th>字段</th><th>单证</th><th>值</th><th>来源</th><th>证据</th><th></th></tr></thead>
         <tbody>
           {[...byName.entries()].map(([name, rows]) => (
-            rows.map((f, idx) => (
-              <tr key={f.id} className={idx > 0 ? "opacity-60" : ""}>
-                <td className="font-medium text-slate-600">{idx === 0 ? name : ""}</td>
+            rows.map((f, idx) => {
+              const change = changedMap.get(`${f.document_id}:${f.field_name}`);
+              return (
+              <tr key={f.id} className={`${idx > 0 ? "opacity-60" : ""} ${change ? "bg-amber-50/80" : ""}`}
+                  data-changed={change ? "true" : undefined}
+                  title={change ? `版本差异：${change.old_value || "（新增）"} → ${change.new_value}（自 v${change.prev_version}）` : undefined}>
+                <td className="font-medium text-slate-600">
+                  {idx === 0 ? <span>{name}{change && idx === 0 ? <span className="ml-1 text-amber-500" title="该字段近期有版本变更">●</span> : ""}</span> : ""}
+                </td>
                 <td>{DOC_LABEL[f.doc_type] || f.doc_type}</td>
                 <td>
                   {editing === f.id ? (
@@ -398,7 +474,8 @@ function FieldsTab({ detail, onChanged }: { detail: Detail; onChanged: () => voi
                           onClick={() => { setEditing(f.id); setValue(f.value); }}>修改</button>
                 </td>
               </tr>
-            ))
+              );
+            })
           ))}
         </tbody>
       </table>

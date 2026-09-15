@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 from ...database import get_db
 from ...deps import OrgScope, get_scope, order_by, paginate
 from ...models import (AuditEvent, Customer, Document, DocumentField,
-                       ReplyDraft, Shipment, ShipmentIssue, User)
+                       DocumentFieldChange, ReplyDraft, Shipment, ShipmentIssue, User)
 from ...schemas import ORMModel
 from ...services.audit import audit
 from ...services.doc_rules import RULE_LABELS, refresh_issues, rule_enabled
@@ -270,6 +270,48 @@ def get_document_file(document_id: int, request: Request,
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             detail={"code": "file_missing", "message": "文件已丢失，请重新上传"})
     return FileResponse(path, media_type="application/pdf", filename=doc.original_filename)
+
+
+def _dump_change(c: DocumentFieldChange) -> dict:
+    return {
+        "id": c.id, "document_id": c.document_id, "prev_document_id": c.prev_document_id,
+        "field_name": c.field_name, "old_value": c.old_value, "new_value": c.new_value,
+        "change_type": c.change_type, "prev_version": c.prev_version,
+        "changed_at": c.changed_at.isoformat() if c.changed_at else None,
+    }
+
+
+@router.get("/documents/{document_id}/diff")
+def get_document_diff(document_id: int, scope: OrgScope = Depends(get_scope),
+                      db: Session = Depends(get_db)):
+    """Field diff of this document version vs the previous version (same doc_type)."""
+    doc = db.scalar(select(Document).where(
+        Document.org_id == scope.org_id, Document.id == document_id))
+    if doc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            detail={"code": "not_found", "message": "单证不存在"})
+    prev = db.scalar(select(Document).where(
+        Document.org_id == scope.org_id, Document.shipment_id == doc.shipment_id,
+        Document.doc_type == doc.doc_type, Document.version < doc.version)
+        .order_by(Document.version.desc()).limit(1))
+    rows = db.scalars(select(DocumentFieldChange).where(
+        DocumentFieldChange.org_id == scope.org_id,
+        DocumentFieldChange.document_id == doc.id)
+        .order_by(DocumentFieldChange.field_name)).all()
+    return {"document_id": doc.id, "doc_type": doc.doc_type, "version": doc.version,
+            "prev_version": prev.version if prev else None,
+            "items": [_dump_change(c) for c in rows]}
+
+
+@router.get("/{shipment_id}/field-changes")
+def list_field_changes(shipment_id: int, scope: OrgScope = Depends(get_scope),
+                       db: Session = Depends(get_db)):
+    s = _shipment(db, scope, shipment_id)
+    rows = db.scalars(select(DocumentFieldChange).where(
+        DocumentFieldChange.org_id == scope.org_id,
+        DocumentFieldChange.shipment_id == s.id)
+        .order_by(DocumentFieldChange.changed_at, DocumentFieldChange.id)).all()
+    return {"items": [_dump_change(c) for c in rows]}
 
 
 @router.get("/{shipment_id}/fields")

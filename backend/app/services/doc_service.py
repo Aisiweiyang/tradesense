@@ -10,8 +10,8 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 
-from ..models import (AuditEvent, Document, DocumentField, Shipment,
-                      ShipmentIssue)
+from ..models import (AuditEvent, Document, DocumentField, DocumentFieldChange,
+                      Shipment, ShipmentIssue)
 from .doc_extractor import extract_pdf_fields
 from .doc_rules import refresh_issues
 
@@ -79,6 +79,8 @@ def ingest_document(db: Session, org_id: int, shipment: Shipment,
         doc.extract_error = f"解析失败：{exc}"[:500]
     db.flush()
 
+    if doc.status == "extracted":
+        record_version_diff(db, org_id, doc)
     refresh_issues(db, org_id, shipment, uploader_user_id)
     db.add(AuditEvent(org_id=org_id, user_id=uploader_user_id, action="document.upload",
                       entity_type="shipment", entity_id=str(shipment.id),
@@ -86,6 +88,57 @@ def ingest_document(db: Session, org_id: int, shipment: Shipment,
                                   f'"status":"{doc.status}"}}'))
     db.flush()
     return doc
+
+
+def record_version_diff(db: Session, org_id: int, doc: Document) -> int:
+    """Compare the freshly ingested version with the previous version of the
+    same (org, shipment, doc_type) and persist a field-level diff. Returns the
+    number of change rows written (0 when this is the first version or nothing
+    changed)."""
+    prev = db.query(Document).filter(
+        Document.org_id == org_id,
+        Document.shipment_id == doc.shipment_id,
+        Document.doc_type == doc.doc_type,
+        Document.id != doc.id,
+        Document.version < doc.version,
+    ).order_by(Document.version.desc()).first()
+    if prev is None:
+        return 0
+
+    old_values = {f.field_name: f.value for f in db.query(DocumentField).filter(
+        DocumentField.document_id == prev.id).all()}
+    new_fields = db.query(DocumentField).filter(
+        DocumentField.document_id == doc.id).all()
+
+    changes: list[DocumentFieldChange] = []
+    seen = set()
+    for f in new_fields:
+        seen.add(f.field_name)
+        if f.field_name in old_values:
+            if old_values[f.field_name] != f.value:
+                changes.append(DocumentFieldChange(
+                    org_id=org_id, document_id=doc.id, prev_document_id=prev.id,
+                    shipment_id=doc.shipment_id, field_name=f.field_name,
+                    old_value=old_values[f.field_name], new_value=f.value,
+                    change_type="changed", prev_version=prev.version))
+        else:
+            changes.append(DocumentFieldChange(
+                org_id=org_id, document_id=doc.id, prev_document_id=prev.id,
+                shipment_id=doc.shipment_id, field_name=f.field_name,
+                old_value="", new_value=f.value,
+                change_type="added", prev_version=prev.version))
+    for name, value in old_values.items():
+        if name not in seen:
+            changes.append(DocumentFieldChange(
+                org_id=org_id, document_id=doc.id, prev_document_id=prev.id,
+                shipment_id=doc.shipment_id, field_name=name,
+                old_value=value, new_value="",
+                change_type="removed", prev_version=prev.version))
+    for c in changes:
+        db.add(c)
+    if changes:
+        db.flush()
+    return len(changes)
 
 
 def _guess_doc_type(filename: str) -> str:

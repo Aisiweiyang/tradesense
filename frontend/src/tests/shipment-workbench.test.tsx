@@ -144,23 +144,64 @@ describe("ShipmentWorkbench", () => {
     expect(screen.getByText("修改")).toBeInTheDocument();
   });
 
-  it("comms tab generates chase email draft", async () => {
+  it("shows version diff table when clicking a version number", async () => {
     vi.stubGlobal("fetch", mockFetch((url) => {
-      if (url.includes("chase-email")) {
-        return { id: 9, subject_en: "Urgent: Documents Revision Required",
-                 body_en: "Dear partner,\n\n- amount mismatch", body_zh: "催补",
-                 needs_confirmation: ["收件人需人工填写"] };
+      if (url.includes("/documents/10/diff")) {
+        return { document_id: 10, doc_type: "invoice", version: 2, prev_version: 1,
+                 items: [{ id: 1, document_id: 10, field_name: "total_amount",
+                           old_value: "48,620.00", new_value: "49,990.00",
+                           change_type: "changed", prev_version: 1 }] };
       }
       if (url.includes("/api/shipments/1")) return DETAIL;
       return LIST;
     }));
-    renderWorkbench();
-    await waitFor(() => screen.getByText("SH-20260912-0842"));
-    fireEvent.click(screen.getByText("SH-20260912-0842"));
-    await waitFor(() => expect(screen.getByText("沟通记录")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("沟通记录"));
-    fireEvent.click(screen.getByText(/生成催补\/改单邮件草稿/));
-    await waitFor(() => expect(screen.getByText("Urgent: Documents Revision Required")).toBeInTheDocument());
-    expect(screen.getByText(/amount mismatch/)).toBeInTheDocument();
+    await openDetail();
+    fireEvent.click(screen.getByText("单证"));
+    await waitFor(() => expect(screen.getByTestId("ver-10")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("ver-10"));
+    await waitFor(() => expect(screen.getByTestId("diff-table")).toBeInTheDocument());
+    expect(screen.getByTestId("diff-table")).toHaveTextContent("total_amount");
+    expect(screen.getByTestId("diff-table")).toHaveTextContent("48,620.00");
+    expect(screen.getByTestId("diff-table")).toHaveTextContent("49,990.00");
+    // 再点一次收起
+    fireEvent.click(screen.getByTestId("ver-10"));
+    await waitFor(() => expect(screen.queryByTestId("version-diff")).not.toBeInTheDocument());
+  });
+
+  it("version diff shows empty hint for first version", async () => {
+    vi.stubGlobal("fetch", mockFetch((url) => {
+      if (url.includes("/documents/10/diff")) {
+        return { document_id: 10, doc_type: "invoice", version: 1, prev_version: null, items: [] };
+      }
+      if (url.includes("/api/shipments/1")) return DETAIL;
+      return LIST;
+    }));
+    await openDetail();
+    fireEvent.click(screen.getByText("单证"));
+    fireEvent.click(screen.getByTestId("ver-10"));
+    await waitFor(() => expect(screen.getByText(/第一版/)).toBeInTheDocument());
+  });
+
+  it("fields tab highlights fields changed across versions", async () => {
+    vi.stubGlobal("fetch", mockFetch((url) => {
+      if (url.includes("/field-changes")) {
+        return { items: [{ id: 1, document_id: 10, field_name: "total_amount",
+                           old_value: "48,620.00", new_value: "49,990.00",
+                           change_type: "changed", prev_version: 1 }] };
+      }
+      if (url.includes("/fields")) {
+        return { items: [{ id: 5, document_id: 10, doc_type: "invoice", field_name: "total_amount",
+                           value: "49,990.00", confidence: 0.9, evidence_page: 1,
+                           evidence_text: "Total Amount", source: "extracted" }] };
+      }
+      if (url.includes("/api/shipments/1")) return DETAIL;
+      return LIST;
+    }));
+    await openDetail();
+    fireEvent.click(screen.getByText("字段对照"));
+    await waitFor(() => expect(screen.getByText("49,990.00")).toBeInTheDocument());
+    const row = screen.getByText("49,990.00").closest("tr") as HTMLElement;
+    expect(row.getAttribute("data-changed")).toBe("true");
+    expect(row.className).toContain("bg-amber-50");
   });
 });
