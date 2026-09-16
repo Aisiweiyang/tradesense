@@ -144,3 +144,33 @@ def test_sheet_lines_snapshot_prices_not_live(client, inquiry_with_quotes):
                 json={"customer_price": before * 2}, headers=h)
     detail = client.get(f"/api/quote-sheets/{sheet['id']}", headers=h).json()
     assert detail["lines"][0]["unit_price"] == before
+
+
+def test_sheet_rejects_quotes_from_other_inquiry(client, inquiry_with_quotes):
+    """跨询盘勾选合并：422 拒绝，防止把别家客户的报价混进同一份对客文件。"""
+    h, inq_id, q1, q2 = inquiry_with_quotes
+    other_inq = client.post("/api/inquiries", json={"text": "Need 500 mugs, FOB"},
+                            headers=h).json()
+    r = client.post("/api/quote-sheets", json={
+        "inquiry_id": other_inq["id"], "quote_ids": [q1["id"]]}, headers=h)
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "quote_mismatch"
+
+
+def test_sheet_rejects_cross_org_inquiry(client, other_org, inquiry_with_quotes):
+    """他司询盘 id：404（与全局隔离口径一致），目标价不得外泄。"""
+    from app.models import Product
+    h, inq_id, q1, _ = inquiry_with_quotes
+    other = auth_headers(client, "owner2@test.cn")
+    # 他司自建询盘+产品报价，凑齐合法入参后仍应因询盘不属于他司而 404
+    prod = client.post("/api/products", json={
+        "sku": "QS-X-1", "name_en": "Mug", "name_zh": "杯", "category": "mug", "moq": 100,
+        "price_tiers": [{"min_qty": 100, "unit_price": 1.0}], "lead_time_days": 10,
+        "certifications": [], "unit_weight_kg": 0.3}, headers=other).json()
+    foreign_inq = client.post("/api/inquiries", json={"text": "quote mugs"}, headers=other).json()
+    q = client.post("/api/quotes", json={
+        "inquiry_id": foreign_inq["id"], "product_id": prod["id"], "quantity": 100},
+        headers=other).json()
+    r = client.post("/api/quote-sheets", json={
+        "inquiry_id": inq_id, "quote_ids": [q["id"]]}, headers=other)
+    assert r.status_code == 404, r.text

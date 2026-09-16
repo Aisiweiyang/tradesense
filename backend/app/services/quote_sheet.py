@@ -65,10 +65,24 @@ def _target_price(inquiry: Inquiry) -> float | None:
 
 def create_sheet(db: Session, org_id: int, inquiry_id: int, quote_ids: list[int],
                  user_id: int | None, notes: str = "") -> QuoteSheet:
-    inquiry = db.get(Inquiry, inquiry_id)
+    from fastapi import HTTPException, status
+
+    inquiry = db.scalar(select(Inquiry).where(
+        Inquiry.org_id == org_id, Inquiry.id == inquiry_id))
+    if inquiry is None:  # 不存在或不属于本组织，一律 404
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={
+            "code": "not_found", "message": "询盘不存在"})
+    # 报价必须属于这张单对应的询盘，防止把别家客户的报价混进同一份对客文件
+    from sqlalchemy import func
+    n = db.scalar(select(func.count(Quote.id)).where(
+        Quote.org_id == org_id, Quote.inquiry_id == inquiry_id,
+        Quote.id.in_(quote_ids or [0])))
+    if n != len(set(quote_ids)):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail={
+            "code": "quote_mismatch",
+            "message": "所选报价中有不属于该询盘的，请重新勾选"})
     lines = build_sheet_lines(db, org_id, quote_ids)
     if not lines:
-        from fastapi import HTTPException, status
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail={
             "code": "no_lines", "message": "没有有效的报价行，请先为询盘创建报价"})
 
