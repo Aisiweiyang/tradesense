@@ -151,6 +151,25 @@ def test_status_rejects_invalid_stage(client):
     assert r.json()["error"]["code"] == "invalid_stage"
 
 
+def test_status_rejects_invalid_status_and_quality_flag(client):
+    """status / quality_flag 传非法值：422 拒绝（与 stage 同口径），不再静默忽略。"""
+    headers = auth_headers(client)
+    inq = client.post("/api/inquiries", json={"text": "Quote 300 glass cups FOB"},
+                      headers=headers).json()
+    for payload, code in (
+        ({"status": "archived"}, "invalid_status"),
+        ({"quality_flag": "excellent"}, "invalid_quality_flag"),
+    ):
+        r = client.post(f"/api/inquiries/{inq['id']}/status", json=payload, headers=headers)
+        assert r.status_code == 422, payload
+        assert r.json()["error"]["code"] == code
+    # 合法值不受影响
+    r = client.post(f"/api/inquiries/{inq['id']}/status",
+                    json={"status": "clarifying", "quality_flag": "normal"}, headers=headers)
+    assert r.status_code == 200
+    assert r.json()["status"] == "clarifying"
+
+
 def test_ingested_inquiry_gets_first_event(db, org):
     """渠道进来的询盘也写首个阶段事件，漏斗触达与手动创建口径一致。"""
     from app.models import ConnectorAccount

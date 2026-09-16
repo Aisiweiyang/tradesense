@@ -29,17 +29,22 @@ def find_inquiry(t: str, q: str) -> int:
 def capture(tk: str, name: str, path: str) -> None:
     out = SHOTS / f"{name}.png"
     url = f"http://127.0.0.1:{FRONTEND_PORT}/#token={tk}&next={path}"
+    tmp = os.environ.get("TEMP") or os.environ.get("tmp") or "/tmp"
     cmd = [
         EDGE, "--headless=new", "--disable-gpu",
-        f"--user-data-dir=C:\\Users\\Asus\\AppData\\Local\\Temp\\edge-hl-{name}",
-        "--window-size=1440,900", "--virtual-time-budget=12000",
+        f"--user-data-dir={Path(tmp) / f'edge-hl-{name}'}",
+        "--window-size=1440,900", "--virtual-time-budget=15000",
         f"--screenshot={out}", url,
     ]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-    ok = out.exists() and out.stat().st_size > 10000
-    print(f"{'OK ' if ok else 'FAIL'} {name} ({out.stat().st_size if out.exists() else 0} bytes)")
-    if not ok:
-        print(r.stdout[-500:], r.stderr[-500:])
+    # 无头渲染偶发在预算内没完成（截图只有几 KB），重试一次
+    for attempt in (1, 2):
+        subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if out.exists() and out.stat().st_size > 10000:
+            print(f"OK {name} ({out.stat().st_size} bytes{', retry' if attempt > 1 else ''})")
+            return
+    print(f"FAIL {name} ({out.stat().st_size if out.exists() else 0} bytes)")
+    if out.exists():
+        os.remove(out)  # 别留半张图误导人
 
 
 def main() -> None:

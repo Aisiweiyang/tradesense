@@ -330,9 +330,16 @@ def get_matches(inquiry_id: int, scope: OrgScope = Depends(get_scope),
 def set_status(inquiry_id: int, body: dict, scope: OrgScope = Depends(get_scope),
                db: Session = Depends(get_db)):
     inq = _get_inquiry(db, scope, inquiry_id)
-    if body.get("status") in ("open", "clarifying", "quoted", "won", "lost", "spam"):
+    # 传了字段但值非法：明确拒绝，不静默吞掉（与 stage 口径一致）
+    if "status" in body and body["status"] not in ("open", "clarifying", "quoted", "won", "lost", "spam"):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail={
+            "code": "invalid_status", "message": f"非法状态 {body['status']}"})
+    if "quality_flag" in body and body["quality_flag"] not in ("normal", "low_quality", "suspected_fraud"):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail={
+            "code": "invalid_quality_flag", "message": f"非法质量标记 {body['quality_flag']}"})
+    if body.get("status"):
         inq.status = body["status"]
-    if body.get("quality_flag") in ("normal", "low_quality", "suspected_fraud"):
+    if body.get("quality_flag"):
         inq.quality_flag = body["quality_flag"]
     old_stage = inq.stage or "new"
     new_stage = body.get("stage") or ""
