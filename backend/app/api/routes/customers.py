@@ -10,6 +10,7 @@ from ...deps import OrgScope, get_scope, order_by, paginate
 from ...models import Customer, FollowUpTask, Inquiry, Quote
 from ...schemas import ContactIn, CustomerIn, CustomerOut, CustomerUpdate
 from ...services.audit import audit
+from ...services.search import ESCAPE, contains
 from ...services.followup import score_customer
 
 router = APIRouter(prefix="/customers", tags=["customers"])
@@ -39,9 +40,9 @@ def list_customers(
     stmt = select(Customer).options(joinedload(Customer.contacts)).where(
         Customer.org_id == scope.org_id)
     if q:
-        like = f"%{q}%"
-        stmt = stmt.where(or_(Customer.company_name.ilike(like), Customer.country.ilike(like),
-                              Customer.tags.ilike(like)))
+        like = contains(q)
+        stmt = stmt.where(or_(Customer.company_name.ilike(like, escape=ESCAPE), Customer.country.ilike(like, escape=ESCAPE),
+                              Customer.tags.ilike(like, escape=ESCAPE)))
     if stage:
         stmt = stmt.where(Customer.stage == stage)
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0

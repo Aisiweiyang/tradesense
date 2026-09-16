@@ -13,6 +13,7 @@ from ...deps import OrgScope, get_scope, order_by, paginate
 from ...models import Customer, FollowUpTask, Inquiry, Supplier
 from ...schemas import FollowUpIn, FollowUpOut, FollowUpStatusIn, SupplierIn, SupplierOut
 from ...services.audit import audit
+from ...services.search import ESCAPE, contains
 from ...services.followup import create_task, workload_enriched
 
 router = APIRouter(prefix="/followups", tags=["followups"])
@@ -86,7 +87,7 @@ def list_suppliers(scope: OrgScope = Depends(get_scope), db: Session = Depends(g
                    q: str = Query("", max_length=100)):
     stmt = select(Supplier).where(Supplier.org_id == scope.org_id)
     if q:
-        stmt = stmt.where(Supplier.name.ilike(f"%{q}%"))
+        stmt = stmt.where(Supplier.name.ilike(contains(q), escape=ESCAPE))
     rows = db.scalars(stmt.order_by(Supplier.id)).all()
     return {"items": [SupplierOut.model_validate(s).model_dump(mode="json") for s in rows]}
 

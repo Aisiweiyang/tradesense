@@ -199,3 +199,15 @@ def test_below_cost_quote_requires_reapproval(client):
     r = client.post(f"/api/quotes/{quote['id']}/approve", headers=headers)
     assert r.status_code == 409
     assert r.json()["error"]["code"] == "below_cost"
+
+
+def test_inquiry_search_wildcards_literal(client):
+    """搜索词里的 % / _ 按字面匹配（q=50% 只命中含 50% 的询盘）。"""
+    headers = auth_headers(client)
+    _mk_inquiry(client, headers, "Quote 500 mugs, we want 50 percent deposit")
+    _mk_inquiry(client, headers, "Quote 500 mugs, T/T 50% deposit terms")
+
+    r = client.get("/api/inquiries", params={"q": "50%"}, headers=headers)
+    titles = [i["title"] for i in r.json()["items"]]
+    assert len(titles) == 1
+    assert "T/T 50% deposit" in titles[0]

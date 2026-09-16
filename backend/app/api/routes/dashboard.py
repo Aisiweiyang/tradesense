@@ -12,6 +12,7 @@ from ...deps import OrgScope, get_scope, paginate, order_by
 from ...models import (AuditEvent, ConnectorAccount, Customer, ExternalMessage,
                        FollowUpTask, Inquiry, Product, Quote, SyncLog)
 from ...services.followup import workload_enriched, workload_lists
+from ...services.search import ESCAPE, contains
 
 router = APIRouter(tags=["dashboard"])
 
@@ -99,7 +100,7 @@ def list_audit(scope: OrgScope = Depends(get_scope), db: Session = Depends(get_d
                pg: dict = Depends(paginate), action: str = Query("", max_length=100)):
     stmt = select(AuditEvent).where(AuditEvent.org_id == scope.org_id)
     if action:
-        stmt = stmt.where(AuditEvent.action.ilike(f"%{action}%"))
+        stmt = stmt.where(AuditEvent.action.ilike(contains(action), escape=ESCAPE))
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = db.scalars(stmt.order_by(order_by(AuditEvent, pg["sort"]))
                       .offset((pg["page"] - 1) * pg["page_size"]).limit(pg["page_size"])).all()

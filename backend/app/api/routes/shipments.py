@@ -15,6 +15,7 @@ from ...models import (AuditEvent, Customer, Document, DocumentField,
 from ...rbac import require_role
 from ...schemas import ORMModel
 from ...services.audit import audit
+from ...services.search import ESCAPE, contains
 from ...services.doc_rules import RULE_LABELS, refresh_issues, rule_enabled
 from ...services.doc_service import ingest_document, manual_set_field, resolve_issue
 
@@ -144,10 +145,10 @@ def list_shipments(scope: OrgScope = Depends(get_scope), db: Session = Depends(g
                    status_filter: str = Query("", alias="status")):
     stmt = select(Shipment).where(Shipment.org_id == scope.org_id)
     if q:
-        like = f"%{q}%"
-        stmt = stmt.where(or_(Shipment.shipment_no.ilike(like), Shipment.order_no.ilike(like),
-                              Shipment.port_of_discharge.ilike(like),
-                              Shipment.port_of_loading.ilike(like)))
+        like = contains(q)
+        stmt = stmt.where(or_(Shipment.shipment_no.ilike(like, escape=ESCAPE), Shipment.order_no.ilike(like, escape=ESCAPE),
+                              Shipment.port_of_discharge.ilike(like, escape=ESCAPE),
+                              Shipment.port_of_loading.ilike(like, escape=ESCAPE)))
     if status_filter:
         stmt = stmt.where(Shipment.status == status_filter)
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0

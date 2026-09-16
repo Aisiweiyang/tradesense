@@ -100,7 +100,12 @@ function StageCard({ iid, stage }: { iid: number; stage: string }) {
   const qc = useQueryClient();
   const set = useMutation({
     mutationFn: (payload: Record<string, string>) => post(`/inquiries/${iid}/status`, payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["inquiry", iid] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inquiry", iid] });
+      // 阶段变了，看板和漏斗的下一次进入要重算
+      qc.invalidateQueries({ queryKey: ["funnel"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
+    },
   });
   return (
     <Card title="📈 销售阶段">

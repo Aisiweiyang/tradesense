@@ -14,6 +14,7 @@ from ...models import KnowledgeDocument
 from ...rbac import require_role
 from ...schemas import KnowledgeIn, KnowledgeOut
 from ...services.audit import audit
+from ...services.search import ESCAPE, contains
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
@@ -37,12 +38,10 @@ def list_knowledge(q: str = "", scope: OrgScope = Depends(require_role("knowledg
     stmt = select(KnowledgeDocument).where(KnowledgeDocument.org_id == scope.org_id)
     q = q.strip()
     if q:
-        # 转义 LIKE 通配符；SQLite 必须显式指定 ESCAPE 字符，否则 \% 不生效
-        safe = q.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
-        like = f"%{safe}%"
-        stmt = stmt.where(or_(KnowledgeDocument.title.like(like, escape="\\"),
-                              KnowledgeDocument.content.like(like, escape="\\"),
-                              KnowledgeDocument.tags.like(like, escape="\\")))
+        like = contains(q)
+        stmt = stmt.where(or_(KnowledgeDocument.title.like(like, escape=ESCAPE),
+                              KnowledgeDocument.content.like(like, escape=ESCAPE),
+                              KnowledgeDocument.tags.like(like, escape=ESCAPE)))
     rows = db.scalars(stmt.order_by(KnowledgeDocument.updated_at.desc())).all()
     return {"items": [_dump(k) for k in rows]}
 

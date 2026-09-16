@@ -8,6 +8,7 @@ interface InquiryRow {
   id: number;
   title: string;
   status: string;
+  stage: string;
   language: string;
   completeness: number;
   quality_flag: string;
@@ -21,6 +22,10 @@ const STATUS_LABEL: Record<string, string> = {
   open: "新询盘", clarifying: "澄清中", quoted: "已报价",
   won: "已成交", lost: "已失败", spam: "垃圾",
 };
+const STAGE_LABEL: Record<string, string> = {
+  new: "新询盘", qualified: "有效线索", clarifying: "澄清中", quoted: "已报价",
+  sample: "寄样中", negotiating: "谈判中", won: "已成交", lost: "已失败", dormant: "休眠",
+};
 const CHANNEL_LABEL: Record<string, string> = {
   manual: "手动录入", email_imap: "邮箱", whatsapp_cloud: "WhatsApp",
   webform: "网站表单", generic_webhook: "Webhook", platform_csv: "平台导入",
@@ -31,13 +36,14 @@ export default function Inquiries() {
   const page = Number(params.get("page") || 1);
   const q = params.get("q") || "";
   const status = params.get("status") || "";
+  const stage = params.get("stage") || "";
   const [search, setSearch] = useState(q);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["inquiries", page, q, status],
+    queryKey: ["inquiries", page, q, status, stage],
     queryFn: () =>
       get<{ items: InquiryRow[]; total: number }>(
-        `/inquiries?page=${page}&page_size=15&q=${encodeURIComponent(q)}&status=${status}`,
+        `/inquiries?page=${page}&page_size=15&q=${encodeURIComponent(q)}&status=${status}&stage=${stage}`,
       ),
   });
 
@@ -72,6 +78,12 @@ export default function Inquiries() {
             <option key={v} value={v}>{l}</option>
           ))}
         </select>
+        <select className="input w-32" value={stage} onChange={(e) => update({ stage: e.target.value })}>
+          <option value="">全部阶段</option>
+          {Object.entries(STAGE_LABEL).map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
       </div>
 
       {isLoading ? (
@@ -90,6 +102,7 @@ export default function Inquiries() {
                 <th className="w-28">客户</th>
                 <th className="w-24">渠道</th>
                 <th className="w-20">状态</th>
+                <th className="w-20">阶段</th>
                 <th className="w-36">更新时间</th>
               </tr>
             </thead>
@@ -120,6 +133,7 @@ export default function Inquiries() {
                   </td>
                   <td><Badge value={i.source_channel} text={CHANNEL_LABEL[i.source_channel] || i.source_channel} /></td>
                   <td><Badge value={i.status} text={STATUS_LABEL[i.status] || i.status} /></td>
+                  <td className="text-xs text-slate-500">{STAGE_LABEL[i.stage] || i.stage}</td>
                   <td className="text-xs text-slate-400">{new Date(i.updated_at).toLocaleString("zh-CN")}</td>
                 </tr>
               ))}

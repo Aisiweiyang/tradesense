@@ -19,6 +19,7 @@ from ...models import (ClarificationLog, ConversationMessage, Customer,
 from ...schemas import (HistoryOut, InquiryCreate, InquiryDetail, InquiryOut,
                         MatchOut, MessageIn, MessageOut, SlotOut, SlotSetIn)
 from ...services.audit import audit
+from ...services.search import ESCAPE, contains
 from ...services.clarification import recommend
 from ...services.fields import (BASE_REQUIRED_FOR_QUOTE, FIELD_DEFS,
                                 FOOD_CONTACT_CERTS, FOOD_CONTACT_CONCEPTS,
@@ -71,11 +72,15 @@ def list_inquiries(scope: OrgScope = Depends(get_scope), db: Session = Depends(g
                    pg: dict = Depends(paginate),
                    q: str = Query("", max_length=200),
                    status_filter: str = Query("", alias="status"),
+                   stage: str = Query("", max_length=30),
                    flag: str = Query("", max_length=30)):
     stmt = select(Inquiry).where(Inquiry.org_id == scope.org_id, Inquiry.deleted == 0)
     if q:
-        like = f"%{q}%"
-        stmt = stmt.where(Inquiry.title.ilike(like) | Inquiry.raw_text.ilike(like))
+        like = contains(q)
+        stmt = stmt.where(Inquiry.title.ilike(like, escape=ESCAPE)
+                          | Inquiry.raw_text.ilike(like, escape=ESCAPE))
+    if stage:
+        stmt = stmt.where(Inquiry.stage == stage)
     if status_filter:
         stmt = stmt.where(Inquiry.status == status_filter)
     if flag:

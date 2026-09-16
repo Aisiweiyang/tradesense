@@ -15,6 +15,7 @@ from ...rbac import require_role
 from ...models import Product, Supplier
 from ...schemas import BulkIds, ProductIn, ProductOut, ProductUpdate
 from ...services.audit import audit
+from ...services.search import ESCAPE, contains
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -30,10 +31,10 @@ def list_products(scope: OrgScope = Depends(get_scope), db: Session = Depends(ge
                   active: str = Query("", pattern="^(true|false|)$")):
     stmt = select(Product).where(Product.org_id == scope.org_id)
     if q:
-        like = f"%{q}%"
-        stmt = stmt.where(or_(Product.sku.ilike(like), Product.name_zh.ilike(like),
-                              Product.name_en.ilike(like), Product.keywords.ilike(like),
-                              Product.material.ilike(like)))
+        like = contains(q)
+        stmt = stmt.where(or_(Product.sku.ilike(like, escape=ESCAPE), Product.name_zh.ilike(like, escape=ESCAPE),
+                              Product.name_en.ilike(like, escape=ESCAPE), Product.keywords.ilike(like, escape=ESCAPE),
+                              Product.material.ilike(like, escape=ESCAPE)))
     if category:
         stmt = stmt.where(Product.category == category)
     if active == "true":
