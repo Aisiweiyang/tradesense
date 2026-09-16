@@ -109,3 +109,18 @@ def test_generate_skips_foreign_and_missing_ids(client, other_org, db):
     data = r.json()
     assert data["body_en"].count("> ") == 1
     assert "> own entry:" in data["body_en"]
+
+
+def test_search_wildcards_are_literal(client):
+    """% 和 _ 按字面匹配（SQLite 需要显式 ESCAPE 子句，否则通配符转义不生效）。"""
+    headers = auth_headers(client)
+    _mk_kb(client, headers, "discount rule", content="Save 50 percent on bulk", tags="价")
+    _mk_kb(client, headers, "percent literal", content="discount 50% today only", tags="价")
+
+    hits = client.get("/api/knowledge", params={"q": "50%"}, headers=headers).json()["items"]
+    assert [x["title"] for x in hits] == ["percent literal"]
+    hits = client.get("/api/knowledge", params={"q": "50 percent"}, headers=headers).json()["items"]
+    assert [x["title"] for x in hits] == ["discount rule"]
+    _mk_kb(client, headers, "snake_case note", content="field order_no", tags="")
+    hits = client.get("/api/knowledge", params={"q": "order_no"}, headers=headers).json()["items"]
+    assert [x["title"] for x in hits] == ["snake_case note"]

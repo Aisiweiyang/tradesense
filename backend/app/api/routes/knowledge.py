@@ -37,12 +37,12 @@ def list_knowledge(q: str = "", scope: OrgScope = Depends(require_role("knowledg
     stmt = select(KnowledgeDocument).where(KnowledgeDocument.org_id == scope.org_id)
     q = q.strip()
     if q:
-        # 转义 LIKE 通配符，% 和 _ 按字面搜索
+        # 转义 LIKE 通配符；SQLite 必须显式指定 ESCAPE 字符，否则 \% 不生效
         safe = q.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
         like = f"%{safe}%"
-        stmt = stmt.where(or_(KnowledgeDocument.title.like(like),
-                              KnowledgeDocument.content.like(like),
-                              KnowledgeDocument.tags.like(like)))
+        stmt = stmt.where(or_(KnowledgeDocument.title.like(like, escape="\\"),
+                              KnowledgeDocument.content.like(like, escape="\\"),
+                              KnowledgeDocument.tags.like(like, escape="\\")))
     rows = db.scalars(stmt.order_by(KnowledgeDocument.updated_at.desc())).all()
     return {"items": [_dump(k) for k in rows]}
 
