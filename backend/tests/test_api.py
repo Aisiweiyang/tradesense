@@ -211,3 +211,16 @@ def test_inquiry_search_wildcards_literal(client):
     titles = [i["title"] for i in r.json()["items"]]
     assert len(titles) == 1
     assert "T/T 50% deposit" in titles[0]
+
+
+def test_login_fail_rate_limited(client):
+    """同邮箱 60 秒内错 5 次后锁 1 分钟：连正确密码也 429；错的是别的邮箱则不受影响。"""
+    for _ in range(5):
+        assert client.post("/api/auth/login", json={
+            "email": "rl@test.cn", "password": "wrongpw"}).status_code == 401
+    r = client.post("/api/auth/login", json={"email": "rl@test.cn", "password": "password123"})
+    assert r.status_code == 429
+    assert r.json()["error"]["code"] == "rate_limited"
+    # 其他邮箱不受牵连
+    assert client.post("/api/auth/login", json={
+        "email": "owner@test.cn", "password": "password123"}).status_code == 200

@@ -38,6 +38,8 @@ if settings.database_url.startswith("sqlite"):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA journal_mode=WAL")
+        # 并发写时等锁而不是立刻抛 database is locked
+        cursor.execute("PRAGMA busy_timeout=5000")
         cursor.close()
 
 

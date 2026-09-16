@@ -18,6 +18,7 @@ from ...services.connectors import (CONNECTOR_REGISTRY, get_connector, registry_
                                     normalize_generic_payload, run_sync)
 from ...services.connectors.whatsapp_sim import normalize_whatsapp_payload
 from ...services.ingestion import ingest_external_message
+from ...services.ratelimit import allow
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
 
@@ -221,6 +222,11 @@ public_router = APIRouter(prefix="/public", tags=["public"])
 @public_router.post("/webform/{account_id}")
 async def webform_submit(account_id: int, request: Request, db: Session = Depends(get_db)):
     """Public inquiry form endpoint for a standalone website (no auth; scoped account)."""
+    # 公开端点防灌水：每账号每分钟最多 30 条，超出返回 429
+    if not allow(f"webform:{account_id}", limit=30, window_seconds=60):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail={"code": "rate_limited",
+                                    "message": "提交过于频繁，请稍后再试"})
     account = db.scalar(select(ConnectorAccount).where(
         ConnectorAccount.id == account_id, ConnectorAccount.connector_type == "webform"))
     if account is None:

@@ -11,6 +11,7 @@ from ...models import Organization, User
 from ...schemas import BootstrapIn, AuthStatus, LoginIn, PasswordChangeIn, TokenOut, UserOut
 from ...security import create_access_token, hash_password, verify_password
 from ...services.audit import audit
+from ...services.ratelimit import allow, reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -62,10 +63,17 @@ def change_password(body: PasswordChangeIn, user: User = Depends(get_current_use
 
 @router.post("/login", response_model=TokenOut)
 def login(body: LoginIn, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.email == body.email.lower()))
+    email = body.email.lower()
+    # 失败限速：同一邮箱 60 秒内错 5 次锁 1 分钟，成功登录即清零
+    if not allow(f"login-fail:{email}", limit=5, window_seconds=60):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail={"code": "rate_limited",
+                                    "message": "登录失败次数过多，请 1 分钟后再试"})
+    user = db.scalar(select(User).where(User.email == email))
     if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,
                             detail={"code": "bad_credentials", "message": "邮箱或密码错误"})
+    reset(f"login-fail:{email}")
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail={"code": "inactive", "message": "账号已停用"})
