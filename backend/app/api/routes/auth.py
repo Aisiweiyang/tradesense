@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ...database import get_db
 from ...deps import get_current_user
 from ...models import Organization, User
-from ...schemas import BootstrapIn, AuthStatus, LoginIn, TokenOut, UserOut
+from ...schemas import BootstrapIn, AuthStatus, LoginIn, PasswordChangeIn, TokenOut, UserOut
 from ...security import create_access_token, hash_password, verify_password
 from ...services.audit import audit
 
@@ -42,6 +42,22 @@ def bootstrap(body: BootstrapIn, db: Session = Depends(get_db)):
     audit(db, org.id, user.id, "auth.bootstrap", "user", user.id)
     db.commit()
     return TokenOut(access_token=create_access_token(user.id, org.id), user=UserOut.model_validate(user))
+
+
+@router.post("/change-password")
+def change_password(body: PasswordChangeIn, user: User = Depends(get_current_user),
+                    db: Session = Depends(get_db)):
+    """自助改密：验证旧密码；改完旧密码立即失效，已签发令牌按自然过期处理。"""
+    if not verify_password(body.old_password, user.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail={"code": "bad_old_password", "message": "旧密码不正确"})
+    if body.old_password == body.new_password:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail={"code": "same_password", "message": "新密码不能与旧密码相同"})
+    user.password_hash = hash_password(body.new_password)
+    audit(db, user.org_id, user.id, "auth.change_password", "user", user.id)
+    db.commit()
+    return {"ok": True, "note": "密码已更新，下次登录使用新密码"}
 
 
 @router.post("/login", response_model=TokenOut)

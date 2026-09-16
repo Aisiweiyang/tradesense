@@ -11,6 +11,7 @@ __pycache__/
 *.db-shm
 backend/data/
 /data/
+/backups/
 .env
 backend/.env
 uploads/

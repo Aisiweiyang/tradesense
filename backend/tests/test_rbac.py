@@ -86,3 +86,35 @@ def test_member_can_read_everything(client, member_headers):
 def test_bad_token_roles_have_no_access(client):
     r = client.get("/api/products", headers={"Authorization": "Bearer fake.token.here"})
     assert r.status_code == 401
+
+
+def test_change_password_flow(client):
+    """旧密码错 400；新密码与旧相同 422；成功后新密码可登录、旧密码失效。"""
+    h = auth_headers(client)
+    uid = client.get("/api/auth/me", headers=h).json()["id"]
+
+    r = client.post("/api/auth/change-password",
+                    json={"old_password": "wrong", "new_password": "newpass123"},
+                    headers=h)
+    assert r.status_code == 400 and r.json()["error"]["code"] == "bad_old_password"
+
+    r = client.post("/api/auth/change-password",
+                    json={"old_password": "password123", "new_password": "password123"},
+                    headers=h)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "same_password"
+
+    r = client.post("/api/auth/change-password",
+                    json={"old_password": "password123", "new_password": "newpass123"},
+                    headers=h)
+    assert r.status_code == 200 and r.json()["ok"] is True
+
+    assert client.post("/api/auth/login", json={
+        "email": "owner@test.cn", "password": "password123"}).status_code == 401
+    assert client.post("/api/auth/login", json={
+        "email": "owner@test.cn", "password": "newpass123"}).status_code == 200
+
+    # 短密码被 schema 拦截
+    r = client.post("/api/auth/change-password",
+                    json={"old_password": "newpass123", "new_password": "short"},
+                    headers=h)
+    assert r.status_code == 422

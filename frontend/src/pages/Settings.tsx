@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { del, get, put, ApiError } from "../api/client";
+import { del, get, post, put, ApiError } from "../api/client";
 import { Badge, Card, KV, Loading, PageHeader } from "../components/ui";
 
 interface Health {
@@ -134,6 +134,47 @@ function FxCard() {
   );
 }
 
+function PasswordCard() {
+  const [form, setForm] = useState({ old_password: "", new_password: "", confirm: "" });
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const save = useMutation({
+    mutationFn: () => post("/auth/change-password", {
+      old_password: form.old_password, new_password: form.new_password,
+    }),
+    onSuccess: () => {
+      setForm({ old_password: "", new_password: "", confirm: "" });
+      setErr("");
+      setMsg("密码已更新，下次登录请使用新密码。");
+    },
+    onError: (e) => setErr((e as Error).message),
+  });
+  const mismatch = form.confirm !== form.new_password && form.confirm !== "";
+  return (
+    <Card title="修改密码" className="mb-4">
+      <div className="grid max-w-md gap-2">
+        <input className="input" type="password" placeholder="当前密码" autoComplete="current-password"
+               value={form.old_password}
+               onChange={(e) => setForm({ ...form, old_password: e.target.value })} />
+        <input className="input" type="password" placeholder="新密码（至少 8 位）" autoComplete="new-password"
+               value={form.new_password}
+               onChange={(e) => setForm({ ...form, new_password: e.target.value })} />
+        <input className="input" type="password" placeholder="再输一遍新密码" autoComplete="new-password"
+               value={form.confirm}
+               onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+        {mismatch && <p className="text-xs text-red-500">两次输入的新密码不一致</p>}
+        {err && <p className="text-xs text-red-500">{err}</p>}
+        {msg && <p className="text-xs text-emerald-600">{msg}</p>}
+        <button className="btn-primary justify-center"
+                disabled={!form.old_password || form.new_password.length < 8 || mismatch || save.isPending}
+                onClick={() => save.mutate()}>
+          {save.isPending ? "提交中…" : "更新密码"}
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const h = useQuery({
     queryKey: ["health"],
@@ -146,6 +187,7 @@ export default function Settings() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title="设置" desc="系统运行状态与接入说明" />
+      <PasswordCard />
       <FxCard />
       <Card title="系统状态" className="mb-4">
         {h.isLoading ? <Loading /> : (
