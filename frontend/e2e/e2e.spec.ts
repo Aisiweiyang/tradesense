@@ -140,4 +140,42 @@ test.describe("TradeSense E2E", () => {
     await expect(page.getByText(new RegExp(`知识库#${kbId}`)).first()).toBeVisible();
     await expect(page.getByText(/知识库内容已引用，请人工核对/)).toBeVisible();
   });
+
+  test("链路5：勾选两条报价 → 合并报价单 → PDF 可下载且未批准带水印", async ({ page, request }) => {
+    const t = await apiToken(request);
+    const H = { Authorization: `Bearer ${t}` };
+
+    // 造一条询盘 + 两笔不同产品的草稿报价（确定性，不依赖种子）
+    const inq = await (await request.post(`${API_BASE}/inquiries`, {
+      headers: H, data: { text: "Quote 800 ceramic mugs and 500 glass cups, FOB" },
+    })).json();
+    const prods = (await (await request.get(`${API_BASE}/products?page=1&page_size=5`, { headers: H })).json()).items;
+    const qids: number[] = [];
+    for (const p of prods.slice(0, 2)) {
+      const q = await (await request.post(`${API_BASE}/quotes`, {
+        headers: { ...H, "Content-Type": "application/json" },
+        data: { inquiry_id: inq.id, product_id: p.id, quantity: 500, incoterm: "FOB" },
+      })).json();
+      qids.push(q.id);
+    }
+
+    await login(page);
+    await page.goto(`/inquiries/${inq.id}`);
+    await page.getByRole("button", { name: /报价/ }).first().click();
+    await page.getByText("报价版本").first().waitFor({ timeout: 15_000 });
+
+    // 按报价 id 精确勾两条 → 合并
+    for (const id of qids) {
+      await page.locator(`input[data-quote-id="${id}"]`).check();
+    }
+    await page.getByRole("button", { name: /合并所选（2）/ }).click();
+    await page.getByText("合并报价单").first().waitFor({ timeout: 15_000 });
+
+    // PDF 链接带 query token，直接请求应得 %PDF（未批准水印由元数据标记）
+    const href = await page.locator('a[href*="/quote-sheets/"][href*="access_token="]').first().getAttribute("href");
+    expect(href).toContain("access_token=");
+    const pdf = await request.get(`http://127.0.0.1:5173${href}`);
+    expect(pdf.status()).toBe(200);
+    expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
+  });
 });

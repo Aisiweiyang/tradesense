@@ -521,7 +521,8 @@ function QuotesTab({ iid }: { iid: number }) {
                 {quotes.data.items.map((q) => (
                   <tr key={q.id}>
                     <td>
-                      <input type="checkbox" aria-label={`选择 v${q.version}`}
+                      <input type="checkbox" data-quote-id={q.id}
+                             aria-label={`选择报价 ${q.product_name} v${q.version}`}
                              checked={selQuotes.includes(q.id)}
                              disabled={!["draft", "approved"].includes(q.status)}
                              onChange={() => setSelQuotes((sel) =>
