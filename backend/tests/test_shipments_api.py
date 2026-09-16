@@ -367,3 +367,36 @@ def test_sniffed_type_versions_increment_per_type(client, shipment):
                          headers=h).json()["items"]
     assert any(c["field_name"] == "invoice_no" and c["old_value"] == "TS-INV-1"
                and c["new_value"] == "TS-INV-9" for c in changes)
+
+
+def test_upload_version_collision_retries(monkeypatch, client, shipment):
+    """并发撞版本号：唯一约束触发后重试取新号，结果版本连续且内容完好。"""
+    from app.services import doc_service
+
+    h = auth_headers(client)
+    v1 = _upload(client, h, shipment["id"], "invoice.pdf", _pdf_bytes("invoice.pdf")).json()
+
+    real = doc_service._next_version
+    calls = {"n": 0}
+
+    def stale_first(db, org_id, shipment_id, doc_type):
+        calls["n"] += 1
+        return 1 if calls["n"] == 1 else real(db, org_id, shipment_id, doc_type)
+
+    monkeypatch.setattr(doc_service, "_next_version", stale_first)
+    v2 = _upload(client, h, shipment["id"], "invoice.pdf",
+                 _pdf_bytes("invoice.pdf", invoice_no="TS-INV-2")).json()
+    assert v2["version"] == v1["version"] + 1
+    assert v2["status"] == "extracted"
+
+
+def test_upload_version_conflict_returns_409(monkeypatch, client, shipment):
+    """重试后仍撞（极端并发）：干净的 409，而不是 500 或静默重复版本。"""
+    from app.services import doc_service
+
+    h = auth_headers(client)
+    _upload(client, h, shipment["id"], "invoice.pdf", _pdf_bytes("invoice.pdf"))
+    monkeypatch.setattr(doc_service, "_next_version", lambda db, org, sid, dt: 1)
+    r = _upload(client, h, shipment["id"], "invoice.pdf", _pdf_bytes("invoice.pdf"))
+    assert r.status_code == 409
+    assert r.json()["error"]["code"] == "version_conflict"

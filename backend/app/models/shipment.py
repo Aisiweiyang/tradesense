@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, OrgMixin, TZDateTime, TimestampMixin, utcnow
@@ -64,6 +64,10 @@ class Shipment(Base, OrgMixin, TimestampMixin):
 
 class Document(Base, OrgMixin, TimestampMixin):
     __tablename__ = "documents"
+    __table_args__ = (
+        Index("uq_documents_shipment_type_version", "org_id", "shipment_id",
+              "doc_type", "version", unique=True),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     shipment_id: Mapped[int] = mapped_column(ForeignKey("shipments.id"), index=True)

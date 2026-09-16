@@ -42,19 +42,33 @@ def ingest_document(db: Session, org_id: int, shipment: Shipment,
             "code": "file_empty", "message": "文件内容为空或损坏"})
 
     doc_type_guess = _guess_doc_type(filename)
-    existing = db.query(Document).filter_by(
-        org_id=org_id, shipment_id=shipment.id, doc_type=doc_type_guess).count()
-    version = existing + 1
+    version = _next_version(db, org_id, shipment.id, doc_type_guess)
 
     storage = _storage_dir(org_id, shipment.id)
     file_path = storage / f"{uuid.uuid4().hex}.pdf"
     file_path.write_bytes(content)
 
-    doc = Document(org_id=org_id, shipment_id=shipment.id, doc_type=doc_type_guess,
-                   version=version, file_path=str(file_path), original_filename=filename,
-                   status="extracting", uploaded_by_user_id=uploader_user_id)
-    db.add(doc)
-    db.flush()
+    # 并发上传同类型单证时可能撞版本号：唯一约束兜底，冲突后取新版本号重试一次
+    from fastapi import HTTPException as _HTTPException, status as _status
+    from sqlalchemy.exc import IntegrityError
+
+    doc = None
+    for attempt in range(2):
+        if attempt:
+            version = _next_version(db, org_id, shipment.id, doc_type_guess)
+        try:
+            with db.begin_nested():
+                doc = Document(org_id=org_id, shipment_id=shipment.id, doc_type=doc_type_guess,
+                               version=version, file_path=str(file_path),
+                               original_filename=filename, status="extracting",
+                               uploaded_by_user_id=uploader_user_id)
+                db.add(doc)
+            break
+        except IntegrityError:
+            doc = None
+    if doc is None:
+        raise _HTTPException(_status.HTTP_409_CONFLICT, detail={
+            "code": "version_conflict", "message": "并发上传冲突，请重试"})
 
     try:
         outcome = extract_pdf_fields(str(file_path))
@@ -79,8 +93,7 @@ def ingest_document(db: Session, org_id: int, shipment: Shipment,
             if sniffed:
                 # 文件名没认出来的类型，按内容标题兜底；版本号按新类型重算
                 doc.doc_type = sniffed
-                doc.version = db.query(Document).filter_by(
-                    org_id=org_id, shipment_id=shipment.id, doc_type=sniffed).count() + 1
+                doc.version = _next_version(db, org_id, shipment.id, sniffed)
     except Exception as exc:  # noqa: BLE001 — pipeline failure must be visible & retryable
         doc.status = "failed"
         doc.extract_error = f"解析失败：{exc}"[:500]
@@ -146,6 +159,13 @@ def record_version_diff(db: Session, org_id: int, doc: Document) -> int:
     if changes:
         db.flush()
     return len(changes)
+
+
+def _next_version(db: Session, org_id: int, shipment_id: int, doc_type: str) -> int:
+    """同类型已有最大版本号 +1；count() 在删过/并发时不可靠。"""
+    from sqlalchemy import func, select
+    return (db.scalar(select(func.max(Document.version)).filter_by(
+        org_id=org_id, shipment_id=shipment_id, doc_type=doc_type)) or 0) + 1
 
 
 def _sniff_doc_type(text_head: str) -> str | None:
