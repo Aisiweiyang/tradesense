@@ -90,6 +90,36 @@ export default function InquiryDetail() {
 }
 
 // ------------------------------------------------------------- 概览
+const STAGES: [string, string][] = [
+  ["new", "新询盘"], ["qualified", "有效线索"], ["clarifying", "澄清中"],
+  ["quoted", "已报价"], ["sample", "寄样中"], ["negotiating", "谈判中"],
+  ["won", "已成交"], ["lost", "已失败"], ["dormant", "休眠"],
+];
+
+function StageCard({ iid, stage }: { iid: number; stage: string }) {
+  const qc = useQueryClient();
+  const set = useMutation({
+    mutationFn: (payload: Record<string, string>) => post(`/inquiries/${iid}/status`, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["inquiry", iid] }),
+  });
+  return (
+    <Card title="📈 销售阶段">
+      <select className="input" value={stage} disabled={set.isPending}
+              onChange={(e) => {
+                const payload: Record<string, string> = { stage: e.target.value };
+                if (e.target.value === "won" || e.target.value === "lost") payload.status = e.target.value;
+                set.mutate(payload);
+              }}>
+        {STAGES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+      {set.error && <p className="mt-1 text-xs text-red-500">{(set.error as Error).message}</p>}
+      <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
+        阶段变化会记入销售漏斗；标为已成交/已失败时状态同步更新。
+      </p>
+    </Card>
+  );
+}
+
 function Overview({ iid }: { iid: number }) {
   // all hooks must run before any early return (rules of hooks)
   const reqQ = useQuery({
@@ -98,7 +128,7 @@ function Overview({ iid }: { iid: number }) {
   });
   const summaryQ = useQuery({
     queryKey: ["inquiry", iid],
-    queryFn: () => get<{ summary_json: string }>(`/inquiries/${iid}`),
+    queryFn: () => get<{ summary_json: string; stage: string }>(`/inquiries/${iid}`),
   });
 
   if (reqQ.isLoading || summaryQ.isLoading) return <Loading />;
@@ -131,6 +161,7 @@ function Overview({ iid }: { iid: number }) {
             </div>
           </div>
         </Card>
+        <StageCard iid={iid} stage={summaryQ.data?.stage || "new"} />
         <Card title="🚧 当前不能正式报价的原因">
           {req.cannot_quote_reasons.length === 0 ? (
             <div className="text-sm text-emerald-600">信息已齐全，可以生成正式报价（仍需人工批准）</div>
