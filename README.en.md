@@ -26,6 +26,7 @@ Built for individuals and small teams starting out in foreign trade: product dat
 | 💰 Deterministic quoting | Computed from tier pricing + packaging/printing/logistics/insurance/duty; every line shows its data source. Internal cost / suggested / customer / approved prices are strictly separated — **human approval makes it formal** |
 | 🚢 Document workbench | Shipments, document upload & extraction (page-level evidence), cross-document consistency rules, exception queue, chase emails (see docs/18) |
 | 💼 Supplier comparison & quote sheets | Multi-supplier comparison ranking, merged quote sheet PDF export (internal cost never leaks), fixed four-role approval matrix (see docs/19) |
+| 🔌 MCP tools | Expose TradeSense to Claude/ChatGPT via MCP: 9 tools for inquiries/matching/quotes/drafts, permissions and audit intact (see docs/24) |
 | 🤖 AI Intake | Auto-extract requirements from emails/attachments: AI proposes (with verbatim evidence), state machine adjudicates, locked fields stay locked (see docs/23) |
 | 📈 Sales funnel | Nine-stage funnel (new inquiry → won): reached, step conversion, median stage dwell time (right-censored), auto-recorded on create/quote/win (see docs/20) |
 | 📚 Knowledge base | Shared trade knowledge (certifications/compliance/practice); cite entries in reply drafts with provenance (see docs/20) |
@@ -78,7 +79,7 @@ docker compose up --build
 ## 🧪 Tests
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest   # 254 tests: unit + API + scenarios + isolation + funnel/KB/FX/insights
+cd backend && .venv/Scripts/python -m pytest   # 261 tests: unit + API + scenarios + isolation + funnel/KB/FX/insights
 cd frontend && npx vitest run                  # 36 tests: components + i18n + API client + pages
 cd frontend && npx playwright test             # 3 browser E2E flows (services must be running)
 ```
@@ -123,7 +124,7 @@ TradeSense (外贸询盘助手)/
 ├── frontend/                React 18 + TypeScript + Vite + Tailwind
 │   ├── src/pages/           19 pages (Chinese UI, English toggle)
 │   └── e2e/                 Playwright end-to-end flows
-├── docs/                    22 documents (Chinese; index below)
+├── docs/                    24 documents (Chinese; index below)
 │   └── phase1-screenshots/  UI acceptance screenshots
 ├── scripts/                 cross-cutting dev tools (start scripts, page capture)
 ├── logs/                    dev logs (runtime only, not committed)
