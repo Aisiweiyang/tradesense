@@ -27,3 +27,5 @@ api_router.include_router(knowledge.router)
 api_router.include_router(fx.router)
 api_router.include_router(ai.router)
 api_router.include_router(attachments.router)
+from .routes import users as users_routes
+api_router.include_router(users_routes.router)

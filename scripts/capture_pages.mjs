@@ -25,6 +25,7 @@ const PAGES = [
   ["10-followups", "/followups", true, null],
   ["11-knowledge", "/knowledge", true, "text=新建条目"],
   ["13-shipment-detail", "/shipments/1", true, null],
+  ["12-settings", "/settings", true, "text=用户管理"],
 ];
 
 async function token() {

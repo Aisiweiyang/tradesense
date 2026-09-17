@@ -79,10 +79,11 @@ async def upload(inquiry_id: int, file: UploadFile,
     if st == "extracted":
         try:
             from ...services.ai.runner import run_intake
-            ai_summary = run_intake(db, scope.org_id, _inquiry(db, scope.org_id, inquiry_id),
-                                    scope.user.id)
+            with db.begin_nested():
+                ai_summary = run_intake(db, scope.org_id,
+                                        _inquiry(db, scope.org_id, inquiry_id), scope.user.id)
         except Exception:  # noqa: BLE001
-            pass
+            ai_summary = None
     db.commit()
     return {"id": att.id, "original_filename": att.original_filename,
             "media_type": att.media_type, "size": att.size, "status": att.status,

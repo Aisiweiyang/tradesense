@@ -143,9 +143,11 @@ def create_inquiry(body: InquiryCreate, scope: OrgScope = Depends(get_scope),
     ai_summary = None
     try:
         from ...services.ai.runner import run_intake
-        ai_summary = run_intake(db, scope.org_id, inq, scope.user.id)
-    except Exception:  # noqa: BLE001 — AI 失败不阻塞建单
-        db.rollback()
+        # SAVEPOINT 包裹：AI 失败只回滚 AI 自身，绝不拖垮建单主事务
+        with db.begin_nested():
+            ai_summary = run_intake(db, scope.org_id, inq, scope.user.id)
+    except Exception:  # noqa: BLE001
+        ai_summary = None
     db.commit()
     return {**InquiryDetail.model_validate(inq).model_dump(mode="json"),
             "requirement": _requirement_view(db, scope, inq),

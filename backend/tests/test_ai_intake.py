@@ -273,3 +273,19 @@ def test_attachment_org_isolation(client, other_org):
     from tests.conftest import auth_headers as ah
     other = ah(client, "owner2@test.cn")
     assert client.get(f"/api/inquiries/{inq['id']}/attachments", headers=other).status_code == 404
+
+
+def test_ai_crash_does_not_lose_inquiry(client, monkeypatch):
+    """红线：AI 在事务中途崩溃，建单主事务必须完好（SAVEPOINT 隔离）。"""
+    import app.services.ai.runner as runner_mod
+
+    def boom(db, org_id, inq, user_id):
+        raise RuntimeError("provider exploded mid-transaction")
+    monkeypatch.setattr(runner_mod, "run_intake", boom)
+    headers = auth_headers(client)
+    r = client.post("/api/inquiries", headers=headers, json={
+        "text": "We need 700 pcs bottles FOB Hamburg."})
+    assert r.status_code == 201, r.text
+    assert r.json()["ai_intake"] is None
+    iid = r.json()["id"]
+    assert client.get(f"/api/inquiries/{iid}", headers=headers).status_code == 200

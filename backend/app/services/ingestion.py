@@ -205,12 +205,13 @@ def add_message(db: Session, org_id: int, inquiry: Inquiry, thread_id: int | Non
         # AI Intake：规则解析后由 AI 补充提议（锁字段/低置信由状态机裁决），失败静默走规则
         try:
             from .ai.runner import run_intake
-            ai_summary = run_intake(db, org_id, inquiry, None)
-            if ai_summary:
-                db.add(SyncLog(org_id=org_id, connector_account_id=account.id,
-                               level="info", event="ai_intake",
-                               detail_json=json.dumps(ai_summary, ensure_ascii=False)))
-        except Exception:  # noqa: BLE001
+            with db.begin_nested():
+                ai_summary = run_intake(db, org_id, inquiry, None)
+                if ai_summary:
+                    db.add(SyncLog(org_id=org_id, connector_account_id=account.id,
+                                   level="info", event="ai_intake",
+                                   detail_json=json.dumps(ai_summary, ensure_ascii=False)))
+        except Exception:  # noqa: BLE001 — AI 失败只回滚 SAVEPOINT，收信不受影响
             pass
         svc.recompute(inquiry)
         msg.parse_json = msg.parse_json or "{}"
