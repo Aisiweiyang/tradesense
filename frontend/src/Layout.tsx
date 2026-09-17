@@ -9,25 +9,38 @@ interface Me {
   email: string;
 }
 
-const NAV = [
-  ["/", "nav_dashboard", "🏢"],
-  ["/today", "nav_today", "✅"],
-  ["/shipments", "单证工作台", "🚢"],
-  ["/inquiries", "nav_inquiries", "📩"],
-  ["/customers", "nav_customers", "🤝"],
-  ["/products", "nav_products", "📦"],
-  ["/products/import", "nav_import", "📥"],
-  ["/suppliers", "nav_suppliers", "🏭"],
-  ["/quotes", "nav_quotes", "💰"],
-  ["/followups", "nav_followups", "🔔"],
-  ["/analytics", "nav_analytics", "📊"],
-  ["/connectors", "nav_connectors", "🔌"],
-  ["/sync-logs", "nav_synclogs", "🧾"],
-  ["/glossary", "nav_glossary", "📖"],
-  ["/knowledge", "nav_knowledge", "📚"],
-  ["/audit", "nav_audit", "🛡️"],
-  ["/settings", "nav_settings", "⚙️"],
-] as const;
+// 分组导航：17 项按使用频率分区，扫一眼就能定位
+const NAV_GROUPS: [string, (readonly [string, string, string])[]][] = [
+  ["总览", [
+    ["/", "nav_dashboard", "🏢"],
+    ["/today", "nav_today", "✅"],
+    ["/analytics", "nav_analytics", "📊"],
+  ]],
+  ["业务", [
+    ["/inquiries", "nav_inquiries", "📩"],
+    ["/customers", "nav_customers", "🤝"],
+    ["/shipments", "单证工作台", "🚢"],
+    ["/quotes", "nav_quotes", "💰"],
+    ["/followups", "nav_followups", "🔔"],
+  ]],
+  ["资料", [
+    ["/products", "nav_products", "📦"],
+    ["/products/import", "nav_import", "📥"],
+    ["/suppliers", "nav_suppliers", "🏭"],
+  ]],
+  ["知识", [
+    ["/knowledge", "nav_knowledge", "📚"],
+    ["/glossary", "nav_glossary", "📖"],
+  ]],
+  ["渠道", [
+    ["/connectors", "nav_connectors", "🔌"],
+    ["/sync-logs", "nav_synclogs", "🧾"],
+  ]],
+  ["系统", [
+    ["/audit", "nav_audit", "🛡️"],
+    ["/settings", "nav_settings", "⚙️"],
+  ]],
+];
 
 export default function Layout() {
   const { t, locale, setLocale } = useI18n();
@@ -48,7 +61,7 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-56 shrink-0 border-r border-slate-200 bg-white">
+      <aside className="flex w-56 shrink-0 flex-col border-r border-slate-200 bg-white">
         <div className="flex h-14 items-center gap-2 border-b border-slate-100 px-4">
           <span className="text-xl">🌊</span>
           <div>
@@ -56,21 +69,31 @@ export default function Layout() {
             <div className="text-[10px] text-slate-400">{t("appTagline")}</div>
           </div>
         </div>
-        <nav className="space-y-0.5 overflow-y-auto p-2" style={{ maxHeight: "calc(100vh - 3.5rem)" }}>
-          {NAV.map(([to, key, icon]) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) =>
-                `flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  isActive ? "bg-brand-50 font-medium text-brand-600" : "text-slate-600 hover:bg-slate-50"
-                }`
-              }
-            >
-              <span>{icon}</span>
-              {t(key as never)}
-            </NavLink>
+        <nav
+          className="flex-1 overflow-y-auto px-2 pb-4"
+          style={{ maxHeight: "calc(100vh - 3.5rem)" }}
+        >
+          {NAV_GROUPS.map(([group, items]) => (
+            <div key={group}>
+              <div className="nav-group">{group}</div>
+              {items.map(([to, key, icon]) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === "/"}
+                  className={({ isActive }) =>
+                    `mb-0.5 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                      isActive
+                        ? "bg-brand-50 font-medium text-brand-600"
+                        : "text-slate-600 hover:bg-slate-50"
+                    }`
+                  }
+                >
+                  <span className="w-4 text-center">{icon}</span>
+                  {t(key as never)}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
       </aside>
@@ -100,7 +123,7 @@ export default function Layout() {
             </button>
           </div>
         </header>
-        <main className="flex-1 overflow-x-hidden p-6">
+        <main className="animate-fade-in flex-1 overflow-x-hidden p-6" key={location.pathname}>
           <Outlet />
         </main>
       </div>
