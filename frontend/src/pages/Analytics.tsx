@@ -23,6 +23,12 @@ interface FunnelStage {
   median_dwell_hours: number | null;
 }
 
+interface Insights {
+  channels: { channel: string; total: number; reached_quoted: number; conversion: number | null }[];
+  first_response: { median_hours: number | null; responded: number; waiting: number; longest_waiting_hours: number | null };
+  target_hit: { hit: number; total: number; rate: number | null };
+}
+
 const STAGE_LABEL: Record<string, string> = {
   open: "新询盘", clarifying: "澄清中", quoted: "已报价", won: "已成交", lost: "已失败",
 };
@@ -45,6 +51,65 @@ function fmtHours(h: number | null): string {
 
 function fmtConv(c: number | null): string {
   return c == null ? "—" : `${Math.round(c * 100)}%`;
+}
+
+const CHANNEL_ZH: Record<string, string> = {
+  manual: "手动", email_imap: "邮箱", whatsapp_cloud: "WhatsApp",
+  webform: "网站表单", generic_webhook: "Webhook", platform_csv: "平台导入",
+};
+
+function InsightsCard() {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["insights"],
+    queryFn: () => get<Insights>("/analytics/insights"),
+  });
+  if (isLoading) return <Card title="渠道与响应"><Loading text="统计中…" /></Card>;
+  if (error) return <Card title="渠道与响应"><ErrorState message={(error as Error).message} onRetry={refetch} /></Card>;
+  const fr = data!.first_response;
+  const hit = data!.target_hit;
+  return (
+    <Card title="渠道与响应" extra={
+      <span className="text-xs text-slate-400">触达已报价口径，与漏斗一致</span>
+    }>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg bg-slate-50 p-3 text-center">
+          <div className="text-xl font-bold text-slate-800">{fr.median_hours == null ? "—" : fmtHours(fr.median_hours)}</div>
+          <div className="mt-0.5 text-xs text-slate-500">首响中位数（已响 {fr.responded}）</div>
+        </div>
+        <div className="rounded-lg bg-slate-50 p-3 text-center">
+          <div className="text-xl font-bold text-amber-600">{fr.waiting}</div>
+          <div className="mt-0.5 text-xs text-slate-500">
+            待响应{fr.longest_waiting_hours != null ? ` · 最长已等 ${fmtHours(fr.longest_waiting_hours)}` : ""}
+          </div>
+        </div>
+        <div className="rounded-lg bg-slate-50 p-3 text-center">
+          <div className="text-xl font-bold text-emerald-600">{hit.rate == null ? "—" : `${Math.round(hit.rate * 100)}%`}</div>
+          <div className="mt-0.5 text-xs text-slate-500">目标价达成（{hit.hit}/{hit.total} 单）</div>
+        </div>
+      </div>
+      {data!.channels.length === 0 ? (
+        <div className="mt-3 py-6 text-center text-sm text-slate-400">还没有询盘进入漏斗</div>
+      ) : (
+        <div className="mt-3 space-y-1.5">
+          {data!.channels.map((ch) => (
+            <div key={ch.channel} className="flex items-center gap-2 text-xs">
+              <span className="w-20 shrink-0 text-slate-500">{CHANNEL_ZH[ch.channel] || ch.channel}</span>
+              <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-brand-500"
+                     style={{ width: `${Math.round((ch.conversion ?? 0) * 100)}%` }} />
+              </div>
+              <span className="w-24 shrink-0 text-right tabular-nums text-slate-500">
+                {ch.reached_quoted}/{ch.total} · {ch.conversion == null ? "—" : `${Math.round(ch.conversion * 100)}%`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-xs leading-relaxed text-slate-400">
+        首响 = 询盘创建到我方第一条回复；待响应的按"至今"截断单独计，不进中位数。目标达成只统计有目标价的已批准报价。
+      </p>
+    </Card>
+  );
 }
 
 function FunnelCard() {
@@ -171,7 +236,8 @@ export default function Analytics() {
         <div className="card p-4"><div className="text-2xl font-bold text-emerald-600">${a.approved_quote_amount.toFixed(0)}</div><div className="text-xs text-slate-500">已批准报价金额（内部统计）</div></div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2"><FunnelCard /></div>
+        <FunnelCard />
+        <InsightsCard />
         <Card title="询盘阶段分布">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={stageData}>

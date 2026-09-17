@@ -1,5 +1,7 @@
 # TradeSense
 
+[![CI](https://github.com/Aisiweiyang/tradesense/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Aisiweiyang/tradesense/actions/workflows/ci.yml)
+
 **中文 | [English](README.en.md)**
 
 **AI 外贸询盘、客户跟进、产品匹配与报价辅助平台**
@@ -69,7 +71,7 @@ docker compose up --build
 ## 🧪 测试
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest      # 210 个测试：单元+API+场景+隔离+幂等+权限+漏斗/知识库/汇率/报价单
+cd backend && .venv/Scripts/python -m pytest      # 242 个测试：单元+API+场景+隔离+幂等+权限+漏斗/知识库/汇率/洞察
 cd frontend && npx vitest run                      # 36 个测试：组件+i18n+API 客户端+页面冒烟+新功能
 cd frontend && npx playwright test                 # 5 条浏览器 E2E 链路（需先启动前后端）
 ```

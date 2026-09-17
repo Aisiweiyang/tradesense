@@ -124,6 +124,11 @@ describe("设置页汇率卡片", () => {
 describe("数据看板销售漏斗", () => {
   it("渲染漏斗各阶段、转化率与停留时长", async () => {
     fetchMock = mockFetch({
+      "/analytics/insights": {
+        channels: [],
+        first_response: { median_hours: null, responded: 0, waiting: 0, longest_waiting_hours: null },
+        target_hit: { hit: 0, total: 0, rate: null },
+      },
       "/dashboard/analytics": {
         inquiry_total: 5, stage_counts: {}, channel_counts: {},
         completeness_buckets: {}, quote_total: 2, approved_quote_amount: 100,

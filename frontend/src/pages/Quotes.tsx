@@ -31,7 +31,11 @@ export default function Quotes() {
                 <tr><th>版本</th><th>询盘</th><th>数量</th><th>术语</th><th>内部成本</th><th>建议价</th><th>客户价</th><th>合计</th><th>状态</th><th>有效期</th></tr>
               </thead>
               <tbody>
-                {data.items.map((q) => (
+                {data.items.map((q) => {
+                  const vu = q.valid_until ? new Date(q.valid_until) : null;
+                  const expired = vu != null && !["superseded", "rejected"].includes(q.status)
+                    && vu.setHours(23, 59, 59, 999) < Date.now();  // "有效至"含当天，次日零点起算过期
+                  return (
                   <tr key={q.id} className="hover:bg-slate-50">
                     <td className="text-xs">v{q.version}</td>
                     <td><a className="text-brand-600 hover:underline" href={`/inquiries/${q.inquiry_id}`}>#{q.inquiry_id}</a></td>
@@ -42,9 +46,13 @@ export default function Quotes() {
                     <td className="font-mono">${q.customer_price.toFixed(2)}</td>
                     <td className="font-mono">${q.total_amount.toFixed(2)}</td>
                     <td><Badge value={q.status} text={STATUS_LABEL[q.status] || q.status} /></td>
-                    <td className="text-xs text-slate-400">{q.valid_until ? new Date(q.valid_until).toLocaleDateString("zh-CN") : "—"}</td>
+                    <td className="text-xs">
+                      {vu ? vu.toLocaleDateString("zh-CN") : "—"}
+                      {expired && <span className="ml-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-600">已过期</span>}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             <div className="px-4 pb-3"><Pagination page={1} pageSize={50} total={data.total} onPage={() => {}} /></div>

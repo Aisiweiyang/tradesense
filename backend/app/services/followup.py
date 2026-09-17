@@ -56,9 +56,59 @@ def suggest_tasks(db: Session, org_id: int, inquiry: Inquiry) -> list[dict]:
     return suggestions
 
 
+def _link_expired_quote_tasks(db: Session, org_id: int, now) -> list[int]:
+    """为已过有效期且仍未被替代/拒绝的报价建"报价已过期"跟进任务。
+
+    去重口径：同一报价只建一次（查既有 pending 任务的 reason_json 里的 quote_id）。
+    当天到期不算过期（valid_until 是"有效至"当天末尾的语义 → 用次日零点比较）。
+    """
+    import json as _json
+
+    from ..models import Quote
+
+    quotes = db.scalars(select(Quote).where(
+        Quote.org_id == org_id,
+        Quote.status.notin_(("superseded", "rejected")),
+        Quote.valid_until != None,  # noqa: E711
+    )).all()
+    existing = {
+        _json.loads(t.reason_json or "{}").get("quote_id")
+        for t in db.scalars(select(FollowUpTask).where(
+            FollowUpTask.org_id == org_id,
+            FollowUpTask.task_type == "quote_expired",
+            FollowUpTask.status == "pending",
+        )).all()
+    }
+    out = []
+    for q in quotes:
+        if q.id in existing:
+            continue
+        if q.valid_until.date() >= now.date():  # 当天仍有效
+            continue
+        db.add(FollowUpTask(
+            org_id=org_id, title=f"报价已过期：{q.notes or ('报价 #' + str(q.id))}（v{q.version}，{q.valid_until.date()} 到期）",
+            inquiry_id=q.inquiry_id, task_type="quote_expired",
+            due_at=now, priority="high",
+            reason_json=_json.dumps({"quote_id": q.id, "valid_until": q.valid_until.isoformat()},
+                                    ensure_ascii=False),
+        ))
+        out.append(q.id)
+    if out:
+        db.flush()
+    # 返回"当前处于过期提醒中"的全部报价（含历史已建任务的），列表语义才稳定
+    active = db.scalars(select(FollowUpTask).where(
+        FollowUpTask.org_id == org_id,
+        FollowUpTask.task_type == "quote_expired",
+        FollowUpTask.status == "pending",
+    )).all()
+    return sorted({_json.loads(t.reason_json or "{}").get("quote_id") for t in active
+                   if _json.loads(t.reason_json or "{}").get("quote_id") is not None})
+
+
 def workload_lists(db: Session, org_id: int) -> dict:
-    """Today / overdue / quoted-no-reply / long-silence / high-intent / incomplete."""
+    """Today / overdue / quoted-no-reply / long-silence / high-intent / incomplete / expired-quotes."""
     today = now_utc()
+    expired_quote_ids = _link_expired_quote_tasks(db, org_id, today)
     tasks_due = db.scalars(select(FollowUpTask).where(
         FollowUpTask.org_id == org_id,
         FollowUpTask.status == "pending",
@@ -83,13 +133,14 @@ def workload_lists(db: Session, org_id: int) -> dict:
         "long_silence": [i.id for i in long_silence],
         "high_intent": [i.id for i in high_intent],
         "incomplete": [i.id for i in incomplete],
+        "expired_quotes": expired_quote_ids,
     }
 
 
 def workload_enriched(db: Session, org_id: int) -> dict[str, list[dict]]:
     """workload_lists with fully-populated objects for the frontend."""
     ids = workload_lists(db, org_id)
-    task_ids = ids["today_due"] + ids["overdue"]
+    task_ids = ids["today_due"] + ids["overdue"] + ids["expired_quotes"]
     tasks = {t.id: t for t in db.scalars(select(FollowUpTask).where(
         FollowUpTask.org_id == org_id, FollowUpTask.id.in_(task_ids or [0]))).all()}
     inquiry_ids = (ids["quoted_no_reply"] + ids["long_silence"]

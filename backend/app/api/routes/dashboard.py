@@ -84,6 +84,14 @@ def analytics(scope: OrgScope = Depends(get_scope), db: Session = Depends(get_db
 funnel_router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
+@funnel_router.get("/insights")
+def analytics_insights(scope: OrgScope = Depends(get_scope), db: Session = Depends(get_db)):
+    """渠道转化、首响时长、目标达成率（口径见 services/insights.py）。"""
+    from ...services.insights import build_insights
+
+    return build_insights(db, scope.org_id)
+
+
 @funnel_router.get("/funnel")
 def sales_funnel(scope: OrgScope = Depends(get_scope), db: Session = Depends(get_db)):
     """九阶段销售漏斗：数量、相邻转化率、阶段停留时长中位数（算法见 services/funnel.py）。"""

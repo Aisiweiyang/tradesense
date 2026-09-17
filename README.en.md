@@ -1,5 +1,7 @@
 # TradeSense
 
+[![CI](https://github.com/Aisiweiyang/tradesense/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Aisiweiyang/tradesense/actions/workflows/ci.yml)
+
 **中文 | [English](README.en.md)**
 
 **AI foreign-trade inquiry, follow-up, product matching & quotation assistant**
@@ -75,7 +77,7 @@ docker compose up --build
 ## 🧪 Tests
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest   # 210 tests: unit + API + scenarios + isolation + funnel/KB/FX
+cd backend && .venv/Scripts/python -m pytest   # 242 tests: unit + API + scenarios + isolation + funnel/KB/FX/insights
 cd frontend && npx vitest run                  # 36 tests: components + i18n + API client + pages
 cd frontend && npx playwright test             # 3 browser E2E flows (services must be running)
 ```
