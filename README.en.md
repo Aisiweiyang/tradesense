@@ -166,6 +166,10 @@ Documentation is maintained in Chinese under [`docs/`](docs/) (20 files). Quick 
 3. **Understandable to beginners** — completeness shows reasons, matching shows explanations, quoting shows sources, clarifications show why.
 4. **Runs without any credentials** — no AI, no email, no WhatsApp: the full core flow still works (simulated connectors are clearly labeled).
 
+## 📄 License
+
+Released under [AGPL-3.0](LICENSE): free to use, modify and self-host; hosting it as a service requires open-sourcing your changes under the same license. Separate commercial licensing available on request.
+
 ## ⚠️ Disclaimer
 
 System hints (glossary, duty/certification reminders) are business aids only and **do not constitute legal, tax, customs or certification conclusions**. For terms like DDP, verify duty rates and destination compliance with your freight forwarder and professional advisers.
