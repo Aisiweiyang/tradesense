@@ -9,6 +9,7 @@ from .base import Base, OrgMixin, TZDateTime, TimestampMixin
 
 class Organization(Base, TimestampMixin):
     __tablename__ = "organizations"
+    settings_json: Mapped[str] = mapped_column(Text, default="{}")  # org 级开关（ai_intake 等）
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))

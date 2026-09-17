@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { post } from "../api/client";
+import { get, post } from "../api/client";
 import { Card, ErrorState, PageHeader } from "../components/ui";
 
 const SAMPLE = `Subject: Inquiry: insulated water bottles 500ml
@@ -20,6 +20,7 @@ HausKonzept GmbH, Hamburg, Germany`;
 
 export default function InquiryNew() {
   const nav = useNavigate();
+  const ai = useQuery({ queryKey: ["ai-status"], queryFn: () => get<{ available: boolean; provider: string }>("/ai/status") });
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [source, setSource] = useState("manual");
@@ -36,6 +37,7 @@ export default function InquiryNew() {
 
   return (
     <div className="mx-auto max-w-3xl">
+      <div className="mb-2 text-xs text-slate-400">{ai.data?.available ? "🤖 AI 智能解析已启用——粘贴后自动补充识别字段，需人工确认" : "规则解析模式（未配置 AI 时照常可用）"}</div>
       <PageHeader
         title="粘贴 / 录入询盘"
         desc="把客户的英文询盘原样粘贴进来，系统会自动识别语言、生成中文摘要、提取结构化需求"

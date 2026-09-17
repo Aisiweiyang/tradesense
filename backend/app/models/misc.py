@@ -31,6 +31,21 @@ class ExchangeRate(Base, OrgMixin, TimestampMixin):
     updated_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
 
 
+class InquiryAttachment(Base, OrgMixin, TimestampMixin):
+    """询盘附件：客户发来的报价单/图片/规格书等，供 AI Intake 提取上下文。"""
+    __tablename__ = "inquiry_attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    inquiry_id: Mapped[int] = mapped_column(ForeignKey("inquiries.id"), index=True)
+    file_path: Mapped[str] = mapped_column(String(500), default="")
+    original_filename: Mapped[str] = mapped_column(String(300), default="")
+    media_type: Mapped[str] = mapped_column(String(50), default="")
+    size: Mapped[int] = mapped_column(default=0)
+    extracted_text: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # extracted / needs_manual
+    uploaded_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+
 class AuditEvent(Base, OrgMixin, TimestampMixin):
     __tablename__ = "audit_events"
 

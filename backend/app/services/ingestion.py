@@ -202,6 +202,16 @@ def add_message(db: Session, org_id: int, inquiry: Inquiry, thread_id: int | Non
     if direction == "in":
         svc = RequirementService(db, org_id)
         changes = svc.ingest_message(inquiry, msg)
+        # AI Intake：规则解析后由 AI 补充提议（锁字段/低置信由状态机裁决），失败静默走规则
+        try:
+            from .ai.runner import run_intake
+            ai_summary = run_intake(db, org_id, inquiry, None)
+            if ai_summary:
+                db.add(SyncLog(org_id=org_id, connector_account_id=account.id,
+                               level="info", event="ai_intake",
+                               detail_json=json.dumps(ai_summary, ensure_ascii=False)))
+        except Exception:  # noqa: BLE001
+            pass
         svc.recompute(inquiry)
         msg.parse_json = msg.parse_json or "{}"
         # persist a compact change summary on the message for the timeline UI

@@ -134,6 +134,52 @@ function FxCard() {
   );
 }
 
+interface AiStatus { provider: string; available: boolean; intake_enabled: boolean }
+
+function AiCard() {
+  const qc = useQueryClient();
+  const me = useQuery({ queryKey: ["me"], queryFn: () => get<{ role: string }>("/auth/me"),
+                        staleTime: 5 * 60 * 1000 });
+  const st = useQuery({ queryKey: ["ai-status"], queryFn: () => get<AiStatus>("/ai/status") });
+  const toggle = useMutation({
+    mutationFn: (enabled: boolean) => put("/ai/settings", { intake_enabled: enabled }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ai-status"] }),
+  });
+  const isOwner = me.data?.role === "owner";
+  return (
+    <Card title="AI Intake（询盘自动解析）" className="mb-4"
+          extra={<span className="text-xs text-slate-400">AI 只提议字段，需求状态机裁决，人工确认</span>}>
+      {st.isLoading ? <Loading /> : st.error ? (
+        <p className="text-sm text-slate-400">{(st.error as Error).message}</p>
+      ) : (
+        <>
+          <KV label="AI 提供方">{st.data?.provider === "none" ? "未配置（规则解析模式）" : String(st.data?.provider)}</KV>
+          <KV label="Intake 状态">
+            {st.data?.available
+              ? (st.data.intake_enabled
+                  ? <Badge value="active" text="已启用" />
+                  : <Badge value="draft" text="已关闭（走规则解析）" />)
+              : <Badge value="unknown" text="AI 未配置，规则解析" />}
+          </KV>
+          {isOwner && st.data?.available && (
+            <div className="mt-2 flex gap-2">
+              <button className="btn-primary text-xs" disabled={st.data.intake_enabled || toggle.isPending}
+                      onClick={() => toggle.mutate(true)}>启用</button>
+              <button className="btn-ghost text-xs" disabled={!st.data.intake_enabled || toggle.isPending}
+                      onClick={() => toggle.mutate(false)}>关闭</button>
+            </div>
+          )}
+          <p className="mt-2 text-xs leading-5 text-slate-400">
+            启用后：新建询盘、渠道收信、上传附件时会由 AI 补充识别字段（附原文依据），
+            经需求状态机裁决后落库——锁定字段不会被覆盖，低置信字段进入待确认。
+            无 AI 时全部功能照常。
+          </p>
+        </>
+      )}
+    </Card>
+  );
+}
+
 function PasswordCard() {
   const [form, setForm] = useState({ old_password: "", new_password: "", confirm: "" });
   const [msg, setMsg] = useState("");
@@ -187,6 +233,7 @@ export default function Settings() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title="设置" desc="系统运行状态与接入说明" />
+      <AiCard />
       <PasswordCard />
       <FxCard />
       <Card title="系统状态" className="mb-4">

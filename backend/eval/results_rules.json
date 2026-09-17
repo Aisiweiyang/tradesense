@@ -1,0 +1,101 @@
+{
+ "pipeline": "rules",
+ "samples": 32,
+ "fields": 110,
+ "hit": 97,
+ "accuracy": 0.8818,
+ "per_field": {
+  "certification": 1.0,
+  "color": 0.83,
+  "customization": 1.0,
+  "destination_country": 1.0,
+  "destination_port": 0.67,
+  "incoterm": 1.0,
+  "material": 0.0,
+  "payment_terms": 0.5,
+  "product": 0.93,
+  "quantity": 0.97,
+  "spec": 0.78,
+  "target_price": 0.71
+ },
+ "misses": [
+  {
+   "name": "zh-gift",
+   "field": "product",
+   "expected": "gift_set",
+   "got": "insulated_bottle"
+  },
+  {
+   "name": "en-kettle",
+   "field": "spec",
+   "expected": "1.2L",
+   "got": ""
+  },
+  {
+   "name": "oral-mixed",
+   "field": "destination_port",
+   "expected": "Paris",
+   "got": ""
+  },
+  {
+   "name": "zh-colloquial-price",
+   "field": "target_price",
+   "expected": "3.5|USD|pcs",
+   "got": "5.0|USD|pcs"
+  },
+  {
+   "name": "en-negation",
+   "field": "material",
+   "expected": "pp plastic",
+   "got": "stainless steel"
+  },
+  {
+   "name": "en-color-change",
+   "field": "color",
+   "expected": "navy",
+   "got": "navy blue|blue"
+  },
+  {
+   "name": "oral-spec",
+   "field": "spec",
+   "expected": "1L",
+   "got": ""
+  },
+  {
+   "name": "en-casual-port",
+   "field": "target_price",
+   "expected": "4|USD|pcs",
+   "got": "4.0|USD|pcs"
+  },
+  {
+   "name": "context-gift",
+   "field": "product",
+   "expected": "mug",
+   "got": "gift_set"
+  },
+  {
+   "name": "context-gift",
+   "field": "destination_port",
+   "expected": "Riyadh",
+   "got": ""
+  },
+  {
+   "name": "multi-field",
+   "field": "payment_terms",
+   "expected": "T/T",
+   "got": "30% deposit 70% against"
+  },
+  {
+   "name": "qty-in-words",
+   "field": "quantity",
+   "expected": "5000",
+   "got": ""
+  },
+  {
+   "name": "en-spec-first",
+   "field": "destination_port",
+   "expected": "Warsaw",
+   "got": ""
+  }
+ ]
+}

@@ -140,9 +140,16 @@ def create_inquiry(body: InquiryCreate, scope: OrgScope = Depends(get_scope),
                              from_stage="", to_stage=inq.stage or "new",
                              actor_user_id=scope.user.id))
     audit(db, scope.org_id, scope.user.id, "inquiry.create", "inquiry", inq.id)
+    ai_summary = None
+    try:
+        from ...services.ai.runner import run_intake
+        ai_summary = run_intake(db, scope.org_id, inq, scope.user.id)
+    except Exception:  # noqa: BLE001 — AI 失败不阻塞建单
+        db.rollback()
     db.commit()
     return {**InquiryDetail.model_validate(inq).model_dump(mode="json"),
-            "requirement": _requirement_view(db, scope, inq)}
+            "requirement": _requirement_view(db, scope, inq),
+            "ai_intake": ai_summary}
 
 
 @router.get("/{inquiry_id}")

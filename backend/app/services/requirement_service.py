@@ -91,6 +91,24 @@ class RequirementService:
         inquiry.language = inquiry.language or extraction.language
         return changes
 
+    def apply_ai_proposals(self, inquiry: Inquiry, proposals: list,
+                           provider_name: str) -> dict:
+        """AI 提议走与消息解析同一套状态机裁决（apply_updates）。
+
+        锁定字段由引擎拒绝、矛盾标 conflicting、低置信进 needs_confirmation；
+        历史记录 actor=ai:<provider>，来源可审计。"""
+        slots = self.slots_data(inquiry.id)
+        changes = apply_updates(slots, proposals, message_id=None, actor="ai")
+        self._persist_changes(inquiry, slots, changes, source_message_id=None,
+                              actor=f"ai:{provider_name}")
+        return {
+            "applied": [c.field for c in changes if c.new_status == "active"],
+            "needs_confirmation": [c.field for c in changes if c.new_status == "needs_confirmation"],
+            "conflicts": [c.field for c in changes if c.new_status == "conflicting"],
+            "skipped_locked": [c.field for c in changes if c.change_type == "locked_ignored"],
+            "proposed": len(proposals),
+        }
+
     def _persist_changes(self, inquiry: Inquiry, slots: dict[str, SlotData],
                          changes: list[ChangeRecord], source_message_id: int | None = None,
                          actor: str = "system") -> None:

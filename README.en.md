@@ -26,6 +26,7 @@ Built for individuals and small teams starting out in foreign trade: product dat
 | 💰 Deterministic quoting | Computed from tier pricing + packaging/printing/logistics/insurance/duty; every line shows its data source. Internal cost / suggested / customer / approved prices are strictly separated — **human approval makes it formal** |
 | 🚢 Document workbench | Shipments, document upload & extraction (page-level evidence), cross-document consistency rules, exception queue, chase emails (see docs/18) |
 | 💼 Supplier comparison & quote sheets | Multi-supplier comparison ranking, merged quote sheet PDF export (internal cost never leaks), fixed four-role approval matrix (see docs/19) |
+| 🤖 AI Intake | Auto-extract requirements from emails/attachments: AI proposes (with verbatim evidence), state machine adjudicates, locked fields stay locked (see docs/23) |
 | 📈 Sales funnel | Nine-stage funnel (new inquiry → won): reached, step conversion, median stage dwell time (right-censored), auto-recorded on create/quote/win (see docs/20) |
 | 📚 Knowledge base | Shared trade knowledge (certifications/compliance/practice); cite entries in reply drafts with provenance (see docs/20) |
 | 💱 Exchange rates | Manually maintained currency pairs (no external API); cross-currency quotes convert automatically and state the source (see docs/20) |
@@ -77,7 +78,7 @@ docker compose up --build
 ## 🧪 Tests
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest   # 242 tests: unit + API + scenarios + isolation + funnel/KB/FX/insights
+cd backend && .venv/Scripts/python -m pytest   # 254 tests: unit + API + scenarios + isolation + funnel/KB/FX/insights
 cd frontend && npx vitest run                  # 36 tests: components + i18n + API client + pages
 cd frontend && npx playwright test             # 3 browser E2E flows (services must be running)
 ```

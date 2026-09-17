@@ -432,18 +432,27 @@ def parse_target_price(text: str) -> dict | None:
     last price keyword; only fall back to the whole text if that yields nothing.
     """
     lower = text.lower()
-    if not any(k in lower for k in PRICE_TRIGGER_KEYWORDS):
-        return None
-    m = None
-    keyword_positions = [lower.rfind(k.lower()) for k in PRICE_TRIGGER_KEYWORDS
+    keyword_positions = [lower.find(k.lower()) for k in PRICE_TRIGGER_KEYWORDS
                          if k.lower() in lower]
-    if keyword_positions:
-        start = min(max(keyword_positions), max(0, len(text) - 1))
-        m = _PRICE_RE.search(text, start)
-    if m is None:
-        m = _PRICE_RE.search(text)
-    if not m:
+    keyword_positions = [p for p in keyword_positions if p >= 0]
+    if not keyword_positions:
         return None
+    # 在全部数字候选里选：优先自带币种的，其次离价格关键词最近的。
+    # 旧逻辑"最后一个关键词之后搜索"在 "budget 4 usd each" 这类币种后置的句式里
+    # 会错过数字并回退全文，把数量当成单价。
+    candidates = list(_PRICE_RE.finditer(text))
+    if not candidates:
+        return None
+
+    def rank(m):
+        has_ccy = bool(m.group(1) or m.group(4))
+        dist = min(abs(m.start() - p) for p in keyword_positions)
+        return (0 if has_ccy else 1, dist if dist <= 40 else 10_000, m.start())
+
+    candidates.sort(key=rank)
+    m = candidates[0]
+    if not (m.group(1) or m.group(4)) and min(abs(m.start() - p) for p in keyword_positions) > 40:
+        return None  # 数字离价格词太远且无币种：不猜
     cur_raw = (m.group(1) or m.group(4) or "USD").lower()
     currency = CURRENCIES.get(cur_raw, CURRENCIES.get(cur_raw.strip("$€£￥"), "USD"))
     val = _num(m.group(2))

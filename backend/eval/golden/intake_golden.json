@@ -1,0 +1,304 @@
+[
+ {
+  "name": "en-clear-bottle",
+  "text": "We need 1,000 pcs vacuum insulated bottles 500ml, target price USD 4.5/pc, ship to Hamburg Germany, LFGB required.",
+  "expect": {
+   "quantity": "1000",
+   "product": "insulated_bottle",
+   "spec": "500ml",
+   "target_price": "4.5|USD|pcs",
+   "destination_port": "Hamburg",
+   "certification": "LFGB"
+  }
+ },
+ {
+  "name": "zh-clear-mug",
+  "text": "需要 2000 个陶瓷杯，蓝色，CIF 上海，预算每个 2.5 美元。",
+  "expect": {
+   "quantity": "2000",
+   "product": "mug",
+   "color": "blue",
+   "incoterm": "CIF",
+   "target_price": "2.5|USD|pcs"
+  }
+ },
+ {
+  "name": "en-unconstrained-color",
+  "text": "Quote 500pcs travel mugs any color is fine, FOB Ningbo.",
+  "expect": {
+   "quantity": "500",
+   "product": "travel_mug",
+   "incoterm": "FOB",
+   "color": "__unconstrained__"
+  }
+ },
+ {
+  "name": "en-glass-set",
+  "text": "Please quote 3,000 double-wall glass cups 400ml, CIF Le Havre France, we need samples first.",
+  "expect": {
+   "quantity": "3000",
+   "product": "glass_cup",
+   "spec": "400ml",
+   "incoterm": "CIF",
+   "destination_port": "Le Havre"
+  }
+ },
+ {
+  "name": "en-baby-cpc",
+  "text": "Interested in 8,000 toddler sippy cups 300ml with CPC and FDA, destination Melbourne Australia.",
+  "expect": {
+   "quantity": "8000",
+   "product": "baby_bottle",
+   "certification": "FDA|CPC"
+  }
+ },
+ {
+  "name": "en-cooler",
+  "text": "We are looking for 1,000 insulated lunch cooler bags 6L, full print logo, ship to Los Angeles.",
+  "expect": {
+   "quantity": "1000",
+   "product": "cooler_bag",
+   "customization": "logo_print"
+  }
+ },
+ {
+  "name": "en-payment",
+  "text": "Need 2,000 enamel camping mugs 360ml, payment by L/C at sight, delivery within 40 days.",
+  "expect": {
+   "quantity": "2000",
+   "product": "mug",
+   "payment_terms": "L/C"
+  }
+ },
+ {
+  "name": "zh-gift",
+  "text": "斋月活动需要 2000 套保温杯加马克杯礼盒，DDP 利雅得，目标价每套 9 美元。",
+  "expect": {
+   "quantity": "2000",
+   "product": "gift_set",
+   "incoterm": "DDP",
+   "target_price": "9.0|USD|pcs"
+  }
+ },
+ {
+  "name": "en-food-container",
+  "text": "Quote for 5,000 pcs PP lunch box 900ml, green and navy blue options, FOB Felixstowe.",
+  "expect": {
+   "quantity": "5000",
+   "product": "food_container",
+   "spec": "900ml"
+  }
+ },
+ {
+  "name": "en-kettle",
+  "text": "We want 500 household vacuum jugs 1.2L, LFGB is mandatory, EXW works for us.",
+  "expect": {
+   "quantity": "500",
+   "product": "kettle",
+   "spec": "1.2L",
+   "certification": "LFGB",
+   "incoterm": "EXW"
+  }
+ },
+ {
+  "name": "en-sample",
+  "text": "Please arrange 10 samples of your shaker bottle 700ml before we order 3,000 pcs.",
+  "expect": {
+   "quantity": "3000",
+   "product": "water_bottle"
+  }
+ },
+ {
+  "name": "zh-clarify",
+  "text": "报个价：高硼硅玻璃杯 320ml 六只装，500 套，到鹿特丹。",
+  "expect": {
+   "quantity": "500",
+   "product": "glass_cup",
+   "spec": "320ml"
+  }
+ },
+ {
+  "name": "oral-zh-quantity",
+  "text": "老板，老规矩，那种保温杯先来一千个，黑色，走汉堡。",
+  "expect": {
+   "quantity": "1000",
+   "color": "black",
+   "destination_port": "Hamburg"
+  }
+ },
+ {
+  "name": "oral-en-vague",
+  "text": "hey, we are a gift shop in Leeds. need around two thousand of your ceramic mugs before xmas, what is your best price for 2000 pcs",
+  "expect": {
+   "quantity": "2000",
+   "product": "mug"
+  }
+ },
+ {
+  "name": "oral-mixed",
+  "text": "Bonjour, nous avons besoin de 800 mugs en ceramique pour Paris, merci.",
+  "expect": {
+   "quantity": "800",
+   "product": "mug",
+   "destination_port": "Paris"
+  }
+ },
+ {
+  "name": "multi-intent",
+  "text": "First, 500 water bottles to Rotterdam. Also we will take 300 glass cups if the price is under 2 USD per piece.",
+  "expect": {
+   "quantity": "500",
+   "product": "water_bottle",
+   "destination_port": "Rotterdam"
+  }
+ },
+ {
+  "name": "zh-colloquial-price",
+  "text": "杯子单价最多 3 块 5 美金，5000 个，广州出货。",
+  "expect": {
+   "quantity": "5000",
+   "target_price": "3.5|USD|pcs"
+  }
+ },
+ {
+  "name": "en-negation",
+  "text": "We need 1,000 travel mugs. Definitely NOT stainless steel this time, plastic inner is fine.",
+  "expect": {
+   "quantity": "1000",
+   "product": "travel_mug",
+   "material": "pp plastic"
+  }
+ },
+ {
+  "name": "en-color-change",
+  "text": "Update: the 800 mugs for our bank event should be navy now, not blue.",
+  "expect": {
+   "quantity": "800",
+   "product": "mug",
+   "color": "navy"
+  }
+ },
+ {
+  "name": "oral-spec",
+  "text": "do you have the big one liter food containers? need about 1500",
+  "expect": {
+   "quantity": "1500",
+   "product": "food_container",
+   "spec": "1L"
+  }
+ },
+ {
+  "name": "en-typo",
+  "text": "we wannt 600 pecs insulated bottels to Hamburg, pls quote",
+  "expect": {
+   "quantity": "600",
+   "destination_port": "Hamburg"
+  }
+ },
+ {
+  "name": "zh-no-pref",
+  "text": "颜色无所谓，我要 1200 个塑料水杯，宁波发货。",
+  "expect": {
+   "quantity": "1200",
+   "product": "water_bottle",
+   "color": "__unconstrained__"
+  }
+ },
+ {
+  "name": "en-casual-port",
+  "text": "1200 bottles of your 750ml flip lid type to NY port, budget 4 usd each",
+  "expect": {
+   "quantity": "1200",
+   "spec": "750ml",
+   "target_price": "4|USD|pcs"
+  }
+ },
+ {
+  "name": "mixed-lang",
+  "text": "Hello,我们需要 3000 个 coffee maker，到手价 CIF Jeddah，thanks",
+  "expect": {
+   "quantity": "3000",
+   "product": "coffee_maker",
+   "incoterm": "CIF",
+   "destination_port": "Jeddah"
+  }
+ },
+ {
+  "name": "context-gift",
+  "text": "corporate gift order: 3,000 mugs with our logo for a bank event in Riyadh, DDP, budget USD 1.8/pc",
+  "expect": {
+   "quantity": "3000",
+   "product": "mug",
+   "customization": "logo_print",
+   "incoterm": "DDP",
+   "target_price": "1.8|USD|pcs",
+   "destination_port": "Riyadh"
+  }
+ },
+ {
+  "name": "multi-field",
+  "text": "PO details: qty 2500 stainless steel bottles 600ml, matte black, 30% deposit 70% against BL, FOB Shenzhen, need FDA.",
+  "expect": {
+   "quantity": "2500",
+   "product": "insulated_bottle",
+   "spec": "600ml",
+   "color": "matte black",
+   "payment_terms": "T/T",
+   "incoterm": "FOB",
+   "certification": "FDA"
+  }
+ },
+ {
+  "name": "qty-in-words",
+  "text": "We confirm the order of five thousand units of your glass meal prep containers, ship to Oslo.",
+  "expect": {
+   "quantity": "5000",
+   "product": "food_container"
+  }
+ },
+ {
+  "name": "range-qty",
+  "text": "Initial run of 1,500 pcs, if it sells well another 4,500. Ship both batches to Auckland NZ.",
+  "expect": {
+   "quantity": "1500",
+   "destination_country": "NZ"
+  }
+ },
+ {
+  "name": "en-two-certs",
+  "text": "3,000 kids bento boxes, must have FDA and LFGB, FOB Qingdao, delivery 45 days.",
+  "expect": {
+   "quantity": "3000",
+   "product": "food_container",
+   "certification": "LFGB|FDA"
+  }
+ },
+ {
+  "name": "zh-oral-port",
+  "text": "那批保温壶 800 个，还是走上海港，CIF。",
+  "expect": {
+   "quantity": "800",
+   "product": "kettle",
+   "incoterm": "CIF"
+  }
+ },
+ {
+  "name": "en-target-only",
+  "text": "If you can do 2.3 USD per piece for 4,000 cooler bags we will sign today.",
+  "expect": {
+   "quantity": "4000",
+   "product": "cooler_bag",
+   "target_price": "2.3|USD|pcs"
+  }
+ },
+ {
+  "name": "en-spec-first",
+  "text": "600ml steel thermos with straw lid, 2,000pcs for our retail chain in Warsaw, Poland.",
+  "expect": {
+   "quantity": "2000",
+   "product": "insulated_bottle",
+   "spec": "600ml",
+   "destination_port": "Warsaw"
+  }
+ }
+]

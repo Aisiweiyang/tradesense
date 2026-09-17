@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { del, get, getToken, post, patch } from "../api/client";
@@ -249,6 +249,84 @@ function Messages({ iid, rawText, onChanged }: { iid: number; rawText: string; o
 // ------------------------------------------------------------- 需求
 interface Hist { id: number; field: string; change_type: string; old_value: string; new_value: string; actor: string; note: string; created_at: string }
 
+interface AiIntakeSummary {
+  ok: boolean; reason?: string;
+  applied?: string[]; needs_confirmation?: string[]; conflicts?: string[];
+  skipped_locked?: string[]; proposed?: number;
+}
+
+function AiParseButton({ iid }: { iid: number }) {
+  const qc = useQueryClient();
+  const [result, setResult] = useState<AiIntakeSummary | null>(null);
+  const ai = useQuery({ queryKey: ["ai-status"], queryFn: () => get<{ available: boolean }>("/ai/status") });
+  const run = useMutation({
+    mutationFn: () => post<AiIntakeSummary>(`/ai/parse/${iid}`),
+    onSuccess: (d) => { setResult(d); qc.invalidateQueries(); },
+  });
+  if (!ai.data?.available) return null;
+  return (
+    <div>
+      <button className="btn-ghost text-xs" disabled={run.isPending} onClick={() => run.mutate()}>
+        {run.isPending ? "AI 解析中…" : "🤖 AI 解析"}
+      </button>
+      {result && (
+        <div className="mt-1 rounded-lg bg-slate-50 p-2 text-xs leading-5 text-slate-500">
+          {result.ok ? (
+            <>提议 {result.proposed} 项：已应用 {result.applied?.length ?? 0}
+              {result.needs_confirmation?.length ? `，待确认 ${result.needs_confirmation.length}` : ""}
+              {result.skipped_locked?.length ? `，锁定跳过 ${result.skipped_locked.length}` : ""}
+              {result.conflicts?.length ? `，矛盾 ${result.conflicts.length}` : ""}。
+              详见下方字段与历史。</>
+          ) : result.reason}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface Attachment { id: number; original_filename: string; media_type: string; size: number; status: string }
+
+function Attachments({ iid }: { iid: number }) {
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const list = useQuery({ queryKey: ["attachments", iid], queryFn: () => get<{ items: Attachment[] }>(`/inquiries/${iid}/attachments`) });
+  const upload = useMutation({
+    mutationFn: (f: File) => {
+      const fd = new FormData();
+      fd.append("file", f);
+      return fetch(`/api/inquiries/${iid}/attachments`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: fd });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["attachments", iid] }); qc.invalidateQueries({ queryKey: ["req", iid] }); },
+  });
+  const remove = useMutation({
+    mutationFn: (id: number) => del(`/inquiries/${iid}/attachments/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["attachments", iid] }),
+  });
+  return (
+    <Card title="📎 附件（PDF/图片，供解析用）">
+      <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden"
+             onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ""; }} />
+      <button className="btn-ghost text-xs" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
+        {upload.isPending ? "上传解析中…" : "⬆ 上传附件（≤10MB）"}
+      </button>
+      {upload.error && <span className="ml-2 text-xs text-red-500">上传失败</span>}
+      <ul className="mt-2 space-y-1">
+        {list.data?.items.map((a) => (
+          <li key={a.id} className="flex items-center justify-between gap-2 text-xs">
+            <span className="truncate text-slate-600">{a.original_filename}</span>
+            <span className="flex shrink-0 items-center gap-2">
+              <Badge value={a.status === "extracted" ? "done" : "pending"}
+                     text={a.status === "extracted" ? "已提取" : "待人工"} />
+              <button className="text-red-400 hover:text-red-600" onClick={() => remove.mutate(a.id)}>删</button>
+            </span>
+          </li>
+        ))}
+        {!list.data?.items.length && <li className="text-slate-400">还没有附件</li>}
+      </ul>
+    </Card>
+  );
+}
+
 function Requirement({ iid }: { iid: number }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<string | null>(null);
@@ -271,7 +349,8 @@ function Requirement({ iid }: { iid: number }) {
 
   return (
     <div className="grid grid-cols-3 gap-4">
-      <Card title="🧩 结构化需求（人工确认具有最高优先级）" className="col-span-2">
+      <Card title="🧩 结构化需求（人工确认具有最高优先级）" className="col-span-2"
+            extra={<AiParseButton iid={iid} />}>
         <table className="table-base">
           <thead><tr><th>字段</th><th>当前值</th><th>状态</th><th>依据</th><th className="w-40">操作</th></tr></thead>
           <tbody>
@@ -310,6 +389,7 @@ function Requirement({ iid }: { iid: number }) {
           </tbody>
         </table>
       </Card>
+      <Attachments iid={iid} />
       <Card title="🕓 修改历史">
         {hist.isLoading ? <Loading /> : (
           <ul className="space-y-2 text-xs">
