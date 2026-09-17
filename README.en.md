@@ -79,7 +79,7 @@ docker compose up --build
 ## 🧪 Tests
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest   # 261 tests: unit + API + scenarios + isolation + funnel/KB/FX/insights
+cd backend && .venv/Scripts/python -m pytest   # 262 tests: unit + API + scenarios + isolation + funnel/KB/FX/insights
 cd frontend && npx vitest run                  # 36 tests: components + i18n + API client + pages
 cd frontend && npx playwright test             # 3 browser E2E flows (services must be running)
 ```
@@ -102,6 +102,9 @@ A single SQLite file by default (`backend/data/`, auto-created); PostgreSQL is s
 
 **Will the system send emails on my behalf?**
 Never. Quotes need human approval and reply drafts must be approved then sent manually.
+
+**How do I connect Claude or another AI assistant?**
+TradeSense ships an MCP server (9 tools) — see docs/24. Assistant calls go through your account token with full permissions and audit.
 
 **Port already in use?**
 Set `TRADESENSE_BACKEND_PORT` / `TRADESENSE_FRONTEND_PORT` before starting (see docs/02).

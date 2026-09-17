@@ -73,7 +73,7 @@ docker compose up --build
 ## 🧪 测试
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest      # 261 个测试：单元+API+场景+隔离+幂等+权限+漏斗/知识库/汇率/洞察
+cd backend && .venv/Scripts/python -m pytest      # 262 个测试：单元+API+场景+隔离+幂等+权限+漏斗/知识库/汇率/洞察
 cd frontend && npx vitest run                      # 36 个测试：组件+i18n+API 客户端+页面冒烟+新功能
 cd frontend && npx playwright test                 # 5 条浏览器 E2E 链路（需先启动前后端）
 ```
@@ -96,6 +96,9 @@ cd frontend && npx playwright test                 # 5 条浏览器 E2E 链路�
 
 **系统会替我发邮件吗？**
 不会。报价需人工批准、回复草稿需人工批准后自行发送，系统永不自动发送任何消息。
+
+**怎么接入 Claude 等 AI 助手？**
+TradeSense 自带 MCP 服务器（9 个工具），配置见 docs/24。助手的一切调用走你的账号令牌，权限与审计照常。
 
 **端口被占用怎么办？**
 启动前设置 `TRADESENSE_BACKEND_PORT` / `TRADESENSE_FRONTEND_PORT` 即可，详见 docs/02。

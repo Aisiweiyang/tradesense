@@ -62,6 +62,21 @@ def test_unknown_tool_is_error_not_crash():
     assert out["result"]["isError"] is True
 
 
+def test_get_inquiry_surfaces_cannot_quote_reasons(monkeypatch):
+    """把"为什么还不能报价"直接交给助手，便于向用户解释阻塞。"""
+    h = m.MCPHandler(token="t")
+    fake = _FakeAPI({"/inquiries/9": {
+        "id": 9, "title": "t", "status": "clarifying", "stage": "clarifying",
+        "completeness": 60,
+        "requirement": {"fields": {"quantity": {"normalized": "500"}},
+                        "cannot_quote_reasons": ["缺少认证要求"]}}})
+    monkeypatch.setattr(h, "_api", fake)
+    out = h.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+        "name": "ts_get_inquiry", "arguments": {"inquiry_id": 9}}})
+    body = json.loads(out["result"]["content"][-1]["text"])
+    assert body["cannot_quote_reasons"] == ["缺少认证要求"]
+
+
 def test_create_quote_maps_fields_and_notes_gate(monkeypatch):
     h = _handler()
     fake = _FakeAPI({"/quotes": {"id": 7, "version": 2, "unit_price": 3.2,

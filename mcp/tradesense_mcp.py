@@ -117,7 +117,9 @@ class MCPHandler:
             req = d.get("requirement") or {}
             return _text({"id": d["id"], "title": d["title"], "status": d["status"],
                           "stage": d["stage"], "completeness": d.get("completeness"),
-                          "requirement": req.get("fields", req)})
+                          "requirement": req.get("fields", req),
+                          "cannot_quote_reasons": req.get("cannot_quote_reasons", [])},
+                         note="cannot_quote_reasons 非空时说明还不能正式报价及原因。")
         if name == "ts_list_inquiries":
             params = {k: v for k, v in args.items() if v}
             params.setdefault("page", 1)
