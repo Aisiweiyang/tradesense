@@ -132,13 +132,14 @@ def run_sync(db: Session, account: ConnectorAccount, ingest_fn) -> dict:
                 ingested += 1
         conn.set_cursor(next_cursor)
         account.last_sync_at = datetime.now(timezone.utc)
-        account.status = account.status if account.status == "connected" else (
-            "connected" if account.mode == "live" else "connected")
+        account.status = "connected"
+        account.last_error = ""
         account.auth_state = "authorized" if account.mode == "live" else "not_authorized_simulated"
         conn.log("sync_finished", "info", {"ingested": ingested, "skipped_duplicates": skipped})
         return {"ok": True, "ingested": ingested, "skipped_duplicates": skipped}
     except Exception as exc:  # noqa: BLE001 — connector failures must not crash API
         account.status = "error"
+        account.auth_state = "not_verified" if account.mode == "live" else "not_authorized_simulated"
         account.last_error = str(exc)[:2000]
         conn.log("sync_error", "error", {"error": str(exc)[:500]})
         return {"ok": False, "error": str(exc)[:300]}

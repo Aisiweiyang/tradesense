@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.*
+*.log
+*.tsbuildinfo
+*.timestamp-*.mjs
+test-results/
+playwright-report/
+.playwright-cli/

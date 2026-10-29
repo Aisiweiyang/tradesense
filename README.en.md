@@ -2,15 +2,9 @@
 
 [![CI](https://github.com/Aisiweiyang/tradesense/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Aisiweiyang/tradesense/actions/workflows/ci.yml)
 
-**中文 | [English](README.en.md)**
+**[中文](README.md) | English**
 
 **AI foreign-trade inquiry, follow-up, product matching & quotation assistant**
-
----
-
-# TradeSense（英文版 / English Edition）
-
-**AI assistant for foreign-trade inquiries, customer follow-up, product matching and quoting**
 
 Built for individuals and small teams starting out in foreign trade: product data scattered across Excel files, inquiries arriving via email/WhatsApp/web forms, limited business English, uncertainty about what to ask next, and missed quotation terms. TradeSense is the salesperson's **co-pilot** — it helps understand customers, organize requirements, find products, surface risks, draft replies, calculate quotes and track follow-ups. **Every important commitment (formal quotes, outgoing replies) requires human confirmation** — the system never sends anything automatically.
 
@@ -79,10 +73,12 @@ docker compose up --build
 ## 🧪 Tests
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest   # 269 tests: unit + API + scenarios + isolation + funnel/KB/FX/insights
-cd frontend && npx vitest run                  # 36 tests: components + i18n + API client + pages
-cd frontend && npx playwright test             # 3 browser E2E flows (services must be running)
+cd backend && .venv/Scripts/python -m pytest   # unit, API, scenario and deployment regressions
+cd frontend && npx vitest run                  # components, API client, pages and workflow regressions
+cd frontend && npx playwright test             # 5 browser E2E flows (services must be running)
 ```
+
+Install `backend/requirements-dev.txt` for backend tests and run `npx playwright install chromium` in `frontend/` before browser tests. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and [CHANGELOG.md](CHANGELOG.md) for verified results and remaining limitations.
 
 ## 🖼️ Screenshots
 

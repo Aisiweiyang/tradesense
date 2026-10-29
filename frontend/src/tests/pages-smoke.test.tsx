@@ -135,7 +135,7 @@ describe("pages smoke", () => {
     const { default: Quotes } = await import("../pages/Quotes");
     renderPage(<Quotes />);
     await waitFor(() => expect(screen.getByText("v2")).toBeInTheDocument());
-    expect(screen.getByText("$4.20")).toBeInTheDocument();
+    expect(screen.getByText("USD 4.20")).toBeInTheDocument();
   });
 
   it("Today 渲染待办任务分组", async () => {

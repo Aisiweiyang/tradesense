@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="TradeSense API",
-    version="0.1.0",
+    version="1.2.0",
     description="AI 外贸询盘、客户跟进、产品匹配与报价辅助平台 — 后端 API",
     lifespan=lifespan,
 )

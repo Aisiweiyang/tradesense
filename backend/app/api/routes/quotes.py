@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -27,6 +28,18 @@ def _next_version(db: Session, org_id: int, inquiry_id: int, product_id: int) ->
     last = db.scalar(select(func.max(Quote.version)).where(
         Quote.org_id == org_id, Quote.inquiry_id == inquiry_id, Quote.product_id == product_id))
     return (last or 0) + 1
+
+
+def _clear_approval(q: Quote) -> None:
+    q.is_formal = False
+    q.approved_by_user_id = None
+    q.approved_at = None
+
+
+def _require_open(q: Quote) -> None:
+    if q.status in ("superseded", "rejected"):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail={
+            "code": "quote_closed", "message": "该报价已被替代或拒绝，请创建新版本后操作"})
 
 
 @router.post("", status_code=201)
@@ -103,6 +116,7 @@ def create_quote(body: QuoteCreateIn, scope: OrgScope = Depends(get_scope),
             Quote.org_id == scope.org_id, Quote.inquiry_id == inq.id,
             Quote.product_id == p.id, Quote.status.notin_(("superseded", "rejected")))).all():
         old.status = "superseded"
+        _clear_approval(old)
 
     quote = Quote(
         org_id=scope.org_id, inquiry_id=inq.id, product_id=p.id, version=version,
@@ -202,17 +216,25 @@ def set_customer_price(quote_id: int, body: QuotePriceIn,
     if q is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             detail={"code": "not_found", "message": "报价不存在"})
-    if q.customer_price and body.customer_price < q.unit_cost:
+    _require_open(q)
+    previous_price = q.customer_price
+    changed = body.customer_price != previous_price
+    if changed:
+        _clear_approval(q)
         q.status = "pending_approval"
+    if body.customer_price < q.unit_cost:
+        q.status = "pending_approval"
+        _clear_approval(q)
         note = "客户价低于内部成本，已自动转入待审批状态"
     else:
-        note = ""
+        note = "客户价已修改，需重新审批后才算正式报价" if changed else ""
     q.customer_price = body.customer_price
     q.total_amount = round(body.customer_price * q.quantity, 2)
     if body.notes:
         q.notes = (q.notes + " | " if q.notes else "") + body.notes
     audit(db, scope.org_id, scope.user.id, "quote.set_price", "quote", q.id,
-          {"customer_price": body.customer_price})
+          {"old_customer_price": previous_price, "customer_price": body.customer_price,
+           "approval_invalidated": changed})
     db.commit()
     return {**_dump(q), "note": note}
 
@@ -225,7 +247,10 @@ def approve_quote(quote_id: int, scope: OrgScope = Depends(require_role("quote.a
     if q is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             detail={"code": "not_found", "message": "报价不存在"})
+    _require_open(q)
     blockers = _quote_blocking(db, scope, q.inquiry_id)
+    if q.status == "approved" and q.is_formal:
+        return _dump(q)
     if blockers:
         raise HTTPException(status.HTTP_409_CONFLICT,
                             detail={"code": "blocked_by_requirements",
@@ -238,7 +263,7 @@ def approve_quote(quote_id: int, scope: OrgScope = Depends(require_role("quote.a
     q.status = "approved"
     q.is_formal = True
     q.approved_by_user_id = scope.user.id
-    q.approved_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    q.approved_at = datetime.now(timezone.utc)
     inq = db.get(Inquiry, q.inquiry_id)
     if inq:
         inq.status = "quoted"
@@ -255,7 +280,7 @@ def reject_quote(quote_id: int, scope: OrgScope = Depends(get_scope), db: Sessio
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             detail={"code": "not_found", "message": "报价不存在"})
     q.status = "rejected"
-    q.is_formal = False
+    _clear_approval(q)
     audit(db, scope.org_id, scope.user.id, "quote.reject", "quote", q.id, {})
     db.commit()
     return _dump(q)

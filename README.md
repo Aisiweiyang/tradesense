@@ -73,10 +73,12 @@ docker compose up --build
 ## 🧪 测试
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest      # 269 个测试：单元+API+场景+隔离+幂等+权限+漏斗/知识库/汇率/洞察
-cd frontend && npx vitest run                      # 36 个测试：组件+i18n+API 客户端+页面冒烟+新功能
+cd backend && .venv/Scripts/python -m pytest      # 单元、API、场景、IMAP、锁定、审批与部署回归
+cd frontend && npx vitest run                      # 39 个测试：组件+i18n+API 客户端+页面冒烟+分页与连接状态
 cd frontend && npx playwright test                 # 5 条浏览器 E2E 链路（需先启动前后端）
 ```
+
+后端测试先安装 `backend/requirements-dev.txt`；浏览器测试先在 `frontend/` 执行 `npx playwright install chromium`。贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)，当前发布的验证结果和未验证范围见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 🖼️ 界面速览
 

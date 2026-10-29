@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { get } from "../api/client";
 import { Badge, Card, EmptyState, ErrorState, Loading, PageHeader, Pagination } from "../components/ui";
@@ -14,9 +15,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function Quotes() {
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["quotes-all"],
-    queryFn: () => get<{ items: Quote[]; total: number }>("/quotes?page=1&page_size=50"),
+    queryKey: ["quotes-all", page],
+    queryFn: () => get<{ items: Quote[]; total: number }>(`/quotes?page=${page}&page_size=${pageSize}`),
   });
   return (
     <div>
@@ -41,10 +44,10 @@ export default function Quotes() {
                     <td><a className="text-brand-600 hover:underline" href={`/inquiries/${q.inquiry_id}`}>#{q.inquiry_id}</a></td>
                     <td>{q.quantity}</td>
                     <td>{q.incoterm}</td>
-                    <td className="font-mono text-xs text-slate-400">${q.unit_cost.toFixed(3)}</td>
-                    <td className="font-mono">${q.unit_price.toFixed(2)}</td>
-                    <td className="font-mono">${q.customer_price.toFixed(2)}</td>
-                    <td className="font-mono">${q.total_amount.toFixed(2)}</td>
+                    <td className="font-mono text-xs text-slate-400">{q.currency} {q.unit_cost.toFixed(3)}</td>
+                    <td className="font-mono">{q.currency} {q.unit_price.toFixed(2)}</td>
+                    <td className="font-mono">{q.currency} {q.customer_price.toFixed(2)}</td>
+                    <td className="font-mono">{q.currency} {q.total_amount.toFixed(2)}</td>
                     <td><Badge value={q.status} text={STATUS_LABEL[q.status] || q.status} /></td>
                     <td className="text-xs">
                       {vu ? vu.toLocaleDateString("zh-CN") : "—"}
@@ -55,7 +58,7 @@ export default function Quotes() {
                 })}
               </tbody>
             </table>
-            <div className="px-4 pb-3"><Pagination page={1} pageSize={50} total={data.total} onPage={() => {}} /></div>
+            <div className="px-4 pb-3"><Pagination page={page} pageSize={pageSize} total={data.total} onPage={setPage} /></div>
           </div>
         )}
     </div>

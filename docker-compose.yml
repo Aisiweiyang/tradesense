@@ -10,10 +10,17 @@ services:
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-in-production}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-1}
       AI_PROVIDER: ${AI_PROVIDER:-none}
+      ENVIRONMENT: ${ENVIRONMENT:-local}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      # IMAP_PASSWORD / WHATSAPP_TOKEN / ... pass through as needed
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      IMAP_PASSWORD: ${IMAP_PASSWORD:-}
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      UPLOAD_DIR: /data/uploads
     ports:
       - "127.0.0.1:${TRADESENSE_BACKEND_PORT:-8001}:8000"
     volumes:

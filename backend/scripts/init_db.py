@@ -1,10 +1,6 @@
-"""Initialize the database: Alembic migration first, create_all as fallback.
+"""Apply migrations, then seed only when explicitly enabled by settings.
 
-Flow:
-  1. `alembic upgrade head` — normal path (also upgrades existing DBs).
-  2. On failure (fresh DB without alembic support): create_all + `alembic stamp head`
-     so future upgrades still work.
-  3. Seed demo data once.
+A failed migration stops startup. Never stamp an unknown schema as up-to-date.
 """
 from __future__ import annotations
 
@@ -22,16 +18,16 @@ def main() -> int:
                               capture_output=True, text=True)
 
     result = alembic("upgrade", "head")
-    if result.returncode == 0:
-        print("[init_db] alembic upgrade head: ok")
-    else:
-        from app.database import engine
-        from app.models import Base
-        Base.metadata.create_all(bind=engine)
-        stamp = alembic("stamp", "head")
-        status = "ok" if stamp.returncode == 0 else f"failed: {stamp.stderr[-200:]}"
-        print(f"[init_db] create_all fallback applied; alembic stamp head: {status}")
+    if result.returncode != 0:
+        print("[init_db] migration failed; startup stopped. Back up and inspect the database before retrying.", file=sys.stderr)
+        print(result.stderr[-2000:], file=sys.stderr)
+        return 1
+    print("[init_db] alembic upgrade head: ok")
 
+    from app.config import settings
+    if not settings.seed_demo_data:
+        print("[init_db] demo seed disabled; use the first-run setup screen to create an administrator")
+        return 0
     from app.seed.run import ensure_seeded
     seeded = ensure_seeded()
     print(f"[init_db] demo seed {'done' if seeded else 'already present'}")

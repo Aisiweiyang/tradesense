@@ -58,12 +58,13 @@ def create_account(body: ConnectorAccountIn, scope: OrgScope = Depends(get_scope
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail={"code": "unknown_connector",
                                     "message": f"不支持的连接器类型 {body.connector_type}"})
-    missing = [k for k in meta["required_config"] if k not in body.config]
+    missing = [k for k in meta["required_config"] if not str(body.config.get(k) or "").strip()]
     mode = "live" if (meta["live_supported"] and not missing and _has_env_keys(meta)) else "simulated"
     account = ConnectorAccount(
         org_id=scope.org_id, connector_type=body.connector_type, name=body.name,
         mode=mode, status="disconnected",
-        auth_state="authorized" if mode == "live" else "not_authorized_simulated",
+        auth_state=("not_verified" if body.connector_type == "email_imap" else "authorized")
+                   if mode == "live" else "not_authorized_simulated",
         config_json=json.dumps(body.config, ensure_ascii=False),
     )
     db.add(account)
@@ -88,6 +89,9 @@ def test_account(account_id: int, scope: OrgScope = Depends(get_scope),
     conn = get_connector(db, account)
     result = conn.health_check()
     account.status = "connected" if result.get("ok") else "error"
+    account.auth_state = ("authorized" if result.get("authorized") else "not_verified") \
+        if account.mode == "live" else "not_authorized_simulated"
+    account.last_error = "" if result.get("ok") else result.get("note", "连接测试失败")
     conn.log("health_check", "info", result)
     db.commit()
     return result

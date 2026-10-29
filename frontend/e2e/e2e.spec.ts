@@ -174,7 +174,7 @@ test.describe("TradeSense E2E", () => {
     // PDF 链接带 query token，直接请求应得 %PDF（未批准水印由元数据标记）
     const href = await page.locator('a[href*="/quote-sheets/"][href*="access_token="]').first().getAttribute("href");
     expect(href).toContain("access_token=");
-    const pdf = await request.get(`http://127.0.0.1:5173${href}`);
+    const pdf = await request.get(new URL(href!, page.url()).toString());
     expect(pdf.status()).toBe(200);
     expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
   });

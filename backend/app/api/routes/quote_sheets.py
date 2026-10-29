@@ -81,6 +81,11 @@ def approve(sheet_id: int, scope: OrgScope = Depends(require_role("quote.approve
     if not json.loads(sheet.lines_json or "[]"):
         raise HTTPException(status.HTTP_409_CONFLICT, detail={
             "code": "empty_sheet", "message": "报价单没有有效行"})
+    if sheet.status in ("superseded", "rejected"):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail={
+            "code": "quote_closed", "message": "该报价单已被替代或拒绝，请创建新版本后审批"})
+    if sheet.status == "approved" and sheet.is_formal:
+        return _dump(sheet)
     sheet.status = "approved"
     sheet.is_formal = True
     sheet.approved_by_user_id = scope.user.id
@@ -97,6 +102,8 @@ def reject(sheet_id: int, scope: OrgScope = Depends(get_scope),
     sheet = _get(db, scope.org_id, sheet_id)
     sheet.status = "rejected"
     sheet.is_formal = False
+    sheet.approved_by_user_id = None
+    sheet.approved_at = None
     audit(db, scope.org_id, scope.user.id, "quote_sheet.reject", "quote_sheet", sheet.id, {})
     db.commit()
     return _dump(sheet)

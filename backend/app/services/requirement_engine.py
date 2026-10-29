@@ -71,6 +71,17 @@ def apply_updates(
         if fld == "notes":
             continue
 
+        # Lock protection precedes EVERY automated update, including conflicts
+        # and "no preference". Keep all incoming evidence in the audit record.
+        if slot.locked:
+            changes.append(ChangeRecord(
+                fld, "locked_ignored", slot.value, " / ".join(u.value for u in ups),
+                slot.status, slot.status,
+                note='Locked field kept; incoming "' + ' / '.join(u.raw for u in ups)
+                     + '" ignored and flagged for review',
+            ))
+            continue
+
         # ---- contradiction inside a single message -------------------------
         distinct = {u.normalized for u in ups if not u.unconstrained}
         if len(distinct) > 1 or any(u.conflict for u in ups):
@@ -105,14 +116,6 @@ def apply_updates(
             changes.append(ChangeRecord(
                 fld, "unconstrained", old_value, u.value, old_status, "unconstrained",
                 note="Buyer stated no preference",
-            ))
-            continue
-
-        # ---- locked fields are never silently overwritten -------------------
-        if slot.locked:
-            changes.append(ChangeRecord(
-                fld, "locked_ignored", slot.value, u.value, slot.status, slot.status,
-                note=f'Locked field kept; incoming "{u.raw}" ignored and flagged for review',
             ))
             continue
 

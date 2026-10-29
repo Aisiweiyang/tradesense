@@ -81,6 +81,26 @@ def test_build_sheet_requires_lines(client):
     assert r.status_code == 422
 
 
+@pytest.mark.parametrize("terminal", ["superseded", "rejected"])
+def test_closed_sheet_loses_formal_status_and_cannot_be_reapproved(client, inquiry_with_quotes, terminal):
+    h, iid, q1, _ = inquiry_with_quotes
+    body = {"inquiry_id": iid, "quote_ids": [q1["id"]]}
+    sheet = client.post("/api/quote-sheets", json=body, headers=h).json()
+    url = f"/api/quote-sheets/{sheet['id']}"
+    assert client.post(url + "/approve", headers=h).json()["is_formal"] is True
+    if terminal == "superseded":
+        client.post("/api/quote-sheets", json=body, headers=h)
+    else:
+        client.post(url + "/reject", headers=h)
+    current = client.get(url, headers=h).json()
+    assert current["status"] == terminal and current["is_formal"] is False
+    from app.models import QuoteSheet
+    row = client.app.state.test_db.get(QuoteSheet, sheet["id"])
+    assert row.approved_at is None and row.approved_by_user_id is None
+    r = client.post(url + "/approve", headers=h)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "quote_closed"
+
+
 def test_unapproved_pdf_has_watermark_and_no_cost(client, inquiry_with_quotes):
     h, inq_id, q1, q2 = inquiry_with_quotes
     sheet = client.post("/api/quote-sheets", json={

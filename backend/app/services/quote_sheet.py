@@ -108,6 +108,9 @@ def create_sheet(db: Session, org_id: int, inquiry_id: int, quote_ids: list[int]
             QuoteSheet.org_id == org_id, QuoteSheet.inquiry_id == inquiry_id,
             QuoteSheet.status.notin_(("superseded", "rejected")))).all():
         old.status = "superseded"
+        old.is_formal = False
+        old.approved_by_user_id = None
+        old.approved_at = None
 
     sheet = QuoteSheet(
         org_id=org_id, inquiry_id=inquiry_id,

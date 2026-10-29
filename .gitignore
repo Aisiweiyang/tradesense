@@ -26,10 +26,13 @@ logs/
 node_modules/
 frontend/dist/
 *.tsbuildinfo
+*.timestamp-*.mjs
 
 # Misc
 .DS_Store
 .playwright/
 test-results/
 playwright-report/
+.playwright-cli/
+output/playwright/
 

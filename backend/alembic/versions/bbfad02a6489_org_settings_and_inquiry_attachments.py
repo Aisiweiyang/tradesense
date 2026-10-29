@@ -16,8 +16,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    with op.batch_alter_table('organizations', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('settings_json', sa.Text(), nullable=True))
+    # The initial schema already owns this column. Older installations created
+    # outside the migration chain may lack it; support both without duplicating
+    # it on every fresh clone.
+    columns = {c['name'] for c in sa.inspect(op.get_bind()).get_columns('organizations')}
+    if 'settings_json' not in columns:
+        with op.batch_alter_table('organizations', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('settings_json', sa.Text(), nullable=True))
     op.execute("UPDATE organizations SET settings_json = '{}' WHERE settings_json IS NULL")
     op.create_table('inquiry_attachments',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -47,5 +52,4 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f('ix_inquiry_attachments_inquiry_id'))
         batch_op.drop_index(batch_op.f('ix_inquiry_attachments_org_id'))
     op.drop_table('inquiry_attachments')
-    with op.batch_alter_table('organizations', schema=None) as batch_op:
-        batch_op.drop_column('settings_json')
+    # settings_json belongs to the initial schema, so retain it on downgrade.

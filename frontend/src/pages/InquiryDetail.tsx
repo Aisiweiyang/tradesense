@@ -648,8 +648,8 @@ function QuotesTab({ iid }: { iid: number }) {
                     <td className="text-xs">{q.product_name}</td>
                     <td>{q.quantity}</td>
                     <td>{q.incoterm}</td>
-                    <td className="font-mono text-xs text-slate-400">${q.unit_cost.toFixed(3)}</td>
-                    <td className="font-mono">${q.customer_price.toFixed(2)}</td>
+                    <td className="font-mono text-xs text-slate-400">{q.currency} {q.unit_cost.toFixed(3)}</td>
+                    <td className="font-mono">{q.currency} {q.customer_price.toFixed(2)}</td>
                     <td><Badge value={q.status} text={{ draft: "草稿", pending_approval: "待批", approved: "已批准", rejected: "已拒绝", superseded: "已替代" }[q.status] || q.status} /></td>
                     <td><button className="text-xs text-brand-500 hover:underline" onClick={() => setDetail(q.id)}>明细</button></td>
                   </tr>
@@ -680,13 +680,13 @@ function QuotesTab({ iid }: { iid: number }) {
                   <tr key={sh.id}>
                     <td className="font-mono">{sh.sheet_no} · v{sh.version}</td>
                     <td>{sh.lines.length}</td>
-                    <td className="font-mono">${sh.subtotal.toFixed(2)}</td>
+                    <td className="font-mono">{sh.currency} {sh.subtotal.toFixed(2)}</td>
                     <td><Badge value={sh.status} text={{ draft: "草稿", approved: "已批准", rejected: "已拒绝", superseded: "已替代" }[sh.status] || sh.status} /></td>
                     <td className="space-x-2 whitespace-nowrap">
                       <a className="text-xs text-brand-500 hover:underline"
                          href={`/api/quote-sheets/${sh.id}/pdf?access_token=${encodeURIComponent(getToken() || "")}`}
                          target="_blank" rel="noreferrer">PDF</a>
-                      {canApprove && sh.status !== "approved" && sh.status !== "rejected" && (
+                      {canApprove && ["draft", "pending_approval"].includes(sh.status) && (
                         <button className="text-xs text-emerald-600 hover:underline"
                                 disabled={approveSheet.isPending}
                                 onClick={() => approveSheet.mutate(sh.id)}>批准</button>
@@ -705,8 +705,9 @@ function QuotesTab({ iid }: { iid: number }) {
         {detail && detailQ.data && (
           <Card title={`计算明细 · v${detailQ.data.version} (${detailQ.data.incoterm})`}
                 extra={<div className="flex gap-2">
-                  {detailQ.data.status !== "approved" && (
-                    <button className="btn-primary text-xs" onClick={() => approve.mutate(detailQ.data!.id)} disabled={approve.isPending}>
+                  {canApprove && ["draft", "pending_approval"].includes(detailQ.data.status) && (
+                    <button className="btn-primary text-xs" onClick={() => approve.mutate(detailQ.data!.id)}
+                            disabled={approve.isPending || detailQ.data.requirement_blockers.length > 0}>
                       ✓ 批准为正式报价
                     </button>
                   )}
@@ -732,9 +733,9 @@ function QuotesTab({ iid }: { iid: number }) {
             </table>
             <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-50 px-4 py-2.5">
               <span className="text-sm text-slate-500">
-                内部成本 <b className="text-slate-700">${detailQ.data.unit_cost.toFixed(3)}</b> ·
-                建议报价 <b className="text-brand-600">${detailQ.data.unit_price.toFixed(2)}</b> ·
-                合计 <b>${detailQ.data.total_amount.toFixed(2)}</b>
+                内部成本 <b className="text-slate-700">{detailQ.data.currency} {detailQ.data.unit_cost.toFixed(3)}</b> ·
+                建议报价 <b className="text-brand-600">{detailQ.data.currency} {detailQ.data.unit_price.toFixed(2)}</b> ·
+                合计 <b>{detailQ.data.currency} {detailQ.data.total_amount.toFixed(2)}</b>
               </span>
               {detailQ.data.valid_until && <span className="text-xs text-slate-400">有效期至 {new Date(detailQ.data.valid_until).toLocaleDateString("zh-CN")}</span>}
             </div>
@@ -743,6 +744,7 @@ function QuotesTab({ iid }: { iid: number }) {
                 {detailQ.data.risks.map((r) => <div key={r}>⚠️ {r}</div>)}
               </div>
             )}
+            {approve.error && <ErrorState message={(approve.error as Error).message} />}
             {detailQ.data.assumptions.map((a) => <div key={a} className="mt-1 text-[10px] text-slate-400">ℹ️ {a}</div>)}
           </Card>
         )}
@@ -822,7 +824,7 @@ interface Draft {
 }
 interface KbPick { id: number; title: string; tags: string }
 interface SheetSummary {
-  id: number; sheet_no: string; version: number; status: string;
+  id: number; sheet_no: string; version: number; status: string; currency: string;
   subtotal: number; lines: { description: string; qty: number; unit_price: number }[];
 }
 const KINDS: [string, string][] = [
